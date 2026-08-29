@@ -1,0 +1,12 @@
+{
+  "name": "campusfix-load-tests",
+  "version": "1.0.0",
+  "description": "Baseline/Load testing for CampusFix",
+  "main": "run-load-test.js",
+  "scripts": {
+    "test": "node run-load-test.js"
+  },
+  "dependencies": {
+    "autocannon": "^7.15.0"
+  }
+}

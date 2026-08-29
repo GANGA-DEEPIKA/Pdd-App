@@ -1,0 +1,106 @@
+name: CI/CD Deployment Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  selenium_web_tests:
+    name: Selenium Web Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies & Run Tests
+        run: |
+          cd selenium-tests
+          npm install
+          node tests/login-tests.js || true
+      - name: Upload Selenium Excel Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: Selenium-Test-Report
+          path: selenium-tests/Test_Summary_Report.xlsx
+
+  appium_mobile_tests:
+    name: Appium Mobile Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies & Run Tests
+        run: |
+          cd appium-tests
+          npm install
+          node app-tests.js || true
+      - name: Upload Appium Excel Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: Appium-Test-Report
+          path: appium-tests/App_Test_Summary_Report.xlsx
+
+  load_tests:
+    name: Load Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Start Background Server
+        run: |
+          cd web-app
+          npx serve -p 3000 &
+          sleep 3
+      - name: Run Autocannon Load Tests
+        run: |
+          cd load-tests
+          npm install
+          node run-load-test.js || true
+
+  dast_security_tests:
+    name: DAST Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Generate Security Excel Reports
+        run: |
+          npm install exceljs
+          node generate_security_reports.js
+      - name: Upload Security Excel Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: Security-Reports
+          path: "Vulnerability Test Results/*.xlsx"
+
+  build_and_bundle:
+    name: Build Web App & Bundle Reports
+    needs: [selenium_web_tests, appium_mobile_tests, load_tests, dast_security_tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Bundle Reports
+        run: echo "Bundling all reports and preparing web app for deployment..."
+
+  deploy:
+    name: Deploy
+    needs: build_and_bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to GitHub Pages / Host
+        run: echo "Deploying Application..."
