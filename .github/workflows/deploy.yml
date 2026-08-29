@@ -23,7 +23,7 @@ jobs:
       - name: Upload Selenium Excel Reports
         uses: actions/upload-artifact@v4
         with:
-          name: Selenium-Test-Report
+          name: web-test-reports
           path: selenium-tests/Test_Summary_Report.xlsx
 
   appium_mobile_tests:
@@ -43,7 +43,7 @@ jobs:
       - name: Upload Appium Excel Reports
         uses: actions/upload-artifact@v4
         with:
-          name: Appium-Test-Report
+          name: appium-test-reports
           path: appium-tests/App_Test_Summary_Report.xlsx
 
   load_tests:
@@ -65,6 +65,11 @@ jobs:
           cd load-tests
           npm install
           node run-load-test.js || true
+      - name: Upload Load Excel Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports
+          path: load-tests/load-test-report.xlsx
 
   dast_security_tests:
     name: DAST Security Tests
@@ -82,7 +87,7 @@ jobs:
       - name: Upload Security Excel Reports
         uses: actions/upload-artifact@v4
         with:
-          name: Security-Reports
+          name: mobile-test-reports
           path: "Vulnerability Test Results/*.xlsx"
 
   build_and_bundle:

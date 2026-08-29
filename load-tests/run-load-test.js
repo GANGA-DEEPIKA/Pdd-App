@@ -1,46 +1,41 @@
 const autocannon = require('autocannon');
-const fs = require('fs');
+const exceljs = require('exceljs');
 
 async function runLoadTest() {
     console.log("Starting Baseline Load Test...");
-    console.log("• 100 virtual users");
-    console.log("• Running continuously for 1 minute");
-    console.log("Target: http://localhost:3000\\n");
 
     const instance = autocannon({
         url: 'http://localhost:3000',
-        connections: 100, // 100 virtual users
-        duration: 60,     // 1 minute
+        connections: 100,
+        duration: 60,
     });
 
     autocannon.track(instance, { renderProgressBar: true });
 
-    instance.on('done', (result) => {
-        console.log("\\n========================================");
-        console.log("LOAD TEST RESULTS");
-        console.log("========================================");
+    instance.on('done', async (result) => {
+        console.log("Load test complete! Generating load-test-report.xlsx...");
         
-        console.log("\\nRequests per second (RPS)");
-        console.log(`Example:`);
-        console.log(`${Math.round(result.requests.average)} req/sec`);
-        console.log(`Meaning your API is handling about ${Math.round(result.requests.average)} requests every second.`);
+        const workbook = new exceljs.Workbook();
+        const sheet = workbook.addWorksheet('Load Test Results');
+        
+        sheet.columns = [
+            { header: 'Metric', key: 'metric', width: 30 },
+            { header: 'Value', key: 'value', width: 30 }
+        ];
 
-        console.log("\\n----------------------------------------");
-        
-        console.log("Response Time");
-        console.log("Example:");
-        console.log(`Average: ${result.latency.average}ms`);
-        console.log(`Min: ${result.latency.min}ms`);
-        console.log(`Max: ${result.latency.max}ms`);
-        
-        console.log("\\nMeaning:");
-        console.log(`• Fastest response = ${result.latency.min}ms`);
-        console.log(`• Average = ${result.latency.average}ms`);
-        console.log(`• Slowest = ${result.latency.max}ms`);
-        
-        console.log("\\nTotal Requests Sent:", result.requests.total);
-        console.log("Errors:", result.errors);
-        console.log("Timeouts:", result.timeouts);
+        sheet.addRow({ metric: 'Requests per Second (Average)', value: Math.round(result.requests.average) });
+        sheet.addRow({ metric: 'Average Response Time', value: \`\${result.latency.average} ms\` });
+        sheet.addRow({ metric: 'Minimum Response Time', value: \`\${result.latency.min} ms\` });
+        sheet.addRow({ metric: 'Maximum Response Time', value: \`\${result.latency.max} ms\` });
+        sheet.addRow({ metric: 'Total Requests Sent', value: result.requests.total });
+        sheet.addRow({ metric: 'Total Errors', value: result.errors });
+        sheet.addRow({ metric: 'Total Timeouts', value: result.timeouts });
+
+        sheet.getRow(1).font = { bold: true };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+
+        await workbook.xlsx.writeFile('load-test-report.xlsx');
+        console.log("Successfully generated load-test-report.xlsx");
     });
 }
 
