@@ -1,0 +1,13 @@
+{
+  "name": "campusfix-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium E2E Tests for CampusFix3 Android App",
+  "main": "app-tests.js",
+  "scripts": {
+    "test": "node app-tests.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "webdriverio": "^8.39.0"
+  }
+}
