@@ -1,39 +1,46 @@
 package com.example.campusfix
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaPlayer
 import android.net.Uri
+import android.util.Base64
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.util.Base64
-import android.graphics.BitmapFactory
-import android.graphics.Bitmap
-import android.media.MediaPlayer
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun ComplaintStatusScreen(
     complaint: ComplaintData,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
     var viewBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
 
-    // Cleanup media player on dispose
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
@@ -48,7 +55,12 @@ fun ComplaintStatusScreen(
                 TextButton(onClick = { viewBitmap = null }) { Text("Close", color = Color(0xFF1565C0)) }
             },
             text = {
-                Box(modifier = Modifier.fillMaxWidth().height(350.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Image(
                         bitmap = viewBitmap!!.asImageBitmap(),
                         contentDescription = "Complaint Photo",
@@ -59,164 +71,392 @@ fun ComplaintStatusScreen(
         )
     }
 
+    val hasPhoto = complaint.photoUrl.isNotEmpty() || complaint.photoUri.isNotEmpty()
+    val hasVideo = complaint.videoUrl.isNotEmpty() || complaint.videoUri.isNotEmpty()
+    val hasVoice = complaint.voiceUrl.isNotEmpty() || complaint.voicePath.isNotEmpty()
+    val hasProof = complaint.proofPhotoUrl.isNotEmpty() || complaint.proofVideoUrl.isNotEmpty()
+
+    val isAssigned = complaint.status != "Pending" && !complaint.status.startsWith("Waiting") && complaint.status.isNotBlank()
+    val isInProgress = complaint.status == "In Progress" || complaint.status == "Resolved" || complaint.status == "Escalated"
+    val isResolved = complaint.status == "Resolved"
+
+    val steps = listOf(
+        TimelineStep("Submitted", true, "📝"),
+        TimelineStep("Assigned to Staff", isAssigned, "👤"),
+        TimelineStep("In Progress", isInProgress, "🔧"),
+        TimelineStep("Resolved", isResolved, "✅")
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F7FA))
     ) {
+        // App Bar Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
-            shadowElevation = 4.dp
+            shadowElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
-                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Tracking Status", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Complaint Status",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
             }
         }
 
+        // Main Content Area
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
+            // Ticket Header Banner
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF103480))
             ) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color(0xFFE3F2FD),
-                    modifier = Modifier.padding(16.dp)
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(24.dp)
+                    Text(
+                        text = "TICKET ID",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.75f),
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (complaint.ticketId.isNotBlank()) complaint.ticketId else "N/A",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White
                     ) {
-                        Text(text = "🎫", fontSize = 48.sp)
                         Text(
-                            text = complaint.ticketId,
-                            fontSize = 20.sp,
+                            text = if (complaint.status.isNotBlank()) complaint.status else "Pending",
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1565C0)
+                            color = Color(0xFF103480),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            StatusItemM3("Subject", complaint.title, "📋")
-            StatusItemM3("Category", complaint.category, "🏷️")
-            
-            val statusColor = when(complaint.status) {
-                "Resolved" -> Color(0xFF4CAF50)
-                "In Progress" -> Color(0xFFFF9800)
-                else -> Color(0xFF1565C0)
+            // Complaint Details Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = if (complaint.title.isNotBlank()) complaint.title else "Complaint",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    DetailRowItem("Category", complaint.category)
+                    DetailRowItem("Location", complaint.location)
+                    DetailRowItem("Priority", complaint.priority)
+                    DetailRowItem("College", complaint.collegeName)
+                    DetailRowItem("Submitted On", formatComplaintDate(complaint.createdAt))
+                    if (complaint.assignedStaffEmail.isNotBlank()) {
+                        DetailRowItem("Assigned Staff", complaint.assignedStaffEmail)
+                    }
+
+                    if (complaint.details.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Description",
+                            fontSize = 12.sp,
+                            color = Color(0xFF757575)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF5F7FA)
+                        ) {
+                            Text(
+                                text = complaint.details,
+                                fontSize = 13.sp,
+                                color = Color(0xFF333333),
+                                lineHeight = 18.sp,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
             }
-            
-            StatusItemM3("Current Status", complaint.status, "⏳", statusColor)
-            
-            // Show attachment button for students to view their own attachments
-            if (complaint.photoUrl.isNotEmpty() || complaint.videoUrl.isNotEmpty() || complaint.voiceUrl.isNotEmpty()) {
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Progress Timeline Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "Progress Timeline",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF555555)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    steps.forEachIndexed { index, step ->
+                        val isLast = index == steps.size - 1
+                        val nextStepDone = if (!isLast) steps[index + 1].isDone else false
+
+                        Row(
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.width(36.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (step.isDone) Color(0xFF1565C0) else Color(0xFFE0E0E0),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = if (step.isDone) step.icon else "○",
+                                            fontSize = 14.sp,
+                                            color = if (step.isDone) Color.White else Color.Gray
+                                        )
+                                    }
+                                }
+
+                                if (!isLast) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(2.dp)
+                                            .height(28.dp)
+                                            .background(if (step.isDone && nextStepDone) Color(0xFF1565C0) else Color(0xFFE0E0E0))
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Text(
+                                text = step.label,
+                                fontSize = 14.sp,
+                                fontWeight = if (step.isDone) FontWeight.Bold else FontWeight.Medium,
+                                color = if (step.isDone) Color(0xFF1565C0) else Color(0xFFBDBDBD),
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Attachments Card (if any attachments exist)
+            if (hasPhoto || hasVideo || hasVoice || hasProof) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Your Attachments", fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Attachments",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF555555)
+                        )
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (complaint.photoUrl.isNotEmpty()) {
-                                AttachmentBadgeM3("📸 Photo", Modifier.weight(1f)) {
-                                    if (complaint.photoUrl.startsWith("base64:")) {
-                                        try {
-                                            val pureBase64 = complaint.photoUrl.removePrefix("base64:")
-                                            val decodedString = Base64.decode(pureBase64, Base64.DEFAULT)
-                                            val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
-                                            if (bitmap != null) viewBitmap = bitmap
-                                        } catch (e: Exception) {
-                                            android.widget.Toast.makeText(context, "Error opening photo", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        try {
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(complaint.photoUrl))
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            android.widget.Toast.makeText(context, "Cannot open link", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if (complaint.videoUrl.isNotEmpty()) {
-                                AttachmentBadgeM3("🎥 Video", Modifier.weight(1f)) {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(complaint.videoUrl))
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "Cannot open video", android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                            
-                            if (complaint.voiceUrl.isNotEmpty()) {
-                                AttachmentBadgeM3(if (isPlaying) "⏹ Stop" else "🎙 Voice", Modifier.weight(1f)) {
-                                    if (isPlaying) {
-                                        mediaPlayer?.stop()
-                                        mediaPlayer?.release()
-                                        mediaPlayer = null
-                                        isPlaying = false
-                                    } else {
-                                        try {
-                                            if (complaint.voiceUrl.startsWith("base64:")) {
-                                                val pureBase64 = complaint.voiceUrl.removePrefix("base64:")
-                                                val decodedBytes = Base64.decode(pureBase64, Base64.DEFAULT)
-                                                val tempFile = File.createTempFile("temp_voice_student", ".mp4", context.cacheDir)
-                                                FileOutputStream(tempFile).use { it.write(decodedBytes) }
-                                                
-                                                mediaPlayer = MediaPlayer().apply {
-                                                    setDataSource(tempFile.absolutePath)
-                                                    prepare()
-                                                    start()
-                                                    setOnCompletionListener {
-                                                        isPlaying = false
-                                                        mediaPlayer?.release()
-                                                        mediaPlayer = null
-                                                        tempFile.delete()
+
+                        if (hasVoice) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (isPlaying) {
+                                            mediaPlayer?.stop()
+                                            mediaPlayer?.release()
+                                            mediaPlayer = null
+                                            isPlaying = false
+                                        } else {
+                                            try {
+                                                val rawVoice = if (complaint.voiceUrl.isNotBlank()) complaint.voiceUrl else complaint.voicePath
+                                                if (rawVoice.startsWith("base64:")) {
+                                                    val pureBase64 = rawVoice.removePrefix("base64:")
+                                                    val decodedBytes = Base64.decode(pureBase64, Base64.DEFAULT)
+                                                    val tempFile = File.createTempFile("temp_voice_student", ".mp4", context.cacheDir)
+                                                    FileOutputStream(tempFile).use { it.write(decodedBytes) }
+
+                                                    mediaPlayer = MediaPlayer().apply {
+                                                        setDataSource(tempFile.absolutePath)
+                                                        prepare()
+                                                        start()
+                                                        setOnCompletionListener {
+                                                            isPlaying = false
+                                                            mediaPlayer?.release()
+                                                            mediaPlayer = null
+                                                            tempFile.delete()
+                                                        }
                                                     }
-                                                }
-                                                isPlaying = true
-                                            } else {
-                                                mediaPlayer = MediaPlayer().apply {
-                                                    setDataSource(complaint.voiceUrl)
-                                                    prepare()
-                                                    start()
-                                                    setOnCompletionListener {
-                                                        isPlaying = false
-                                                        mediaPlayer?.release()
-                                                        mediaPlayer = null
+                                                    isPlaying = true
+                                                } else if (rawVoice.isNotEmpty()) {
+                                                    mediaPlayer = MediaPlayer().apply {
+                                                        setDataSource(rawVoice)
+                                                        prepare()
+                                                        start()
+                                                        setOnCompletionListener {
+                                                            isPlaying = false
+                                                            mediaPlayer?.release()
+                                                            mediaPlayer = null
+                                                        }
                                                     }
+                                                    isPlaying = true
                                                 }
-                                                isPlaying = true
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "Cannot play voice note", android.widget.Toast.LENGTH_SHORT).show()
                                             }
-                                        } catch (e: Exception) {
-                                            android.widget.Toast.makeText(context, "Cannot play voice note", android.widget.Toast.LENGTH_SHORT).show()
                                         }
-                                    }
+                                    },
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFE3F2FD)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = if (isPlaying) "⏹ Voice recording attached (Playing...)" else "🎙 Voice recording attached",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF1565C0),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        if (hasPhoto) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val rawPhoto = if (complaint.photoUrl.isNotBlank()) complaint.photoUrl else complaint.photoUri
+                                        if (rawPhoto.startsWith("base64:")) {
+                                            try {
+                                                val pureBase64 = rawPhoto.removePrefix("base64:")
+                                                val decodedString = Base64.decode(pureBase64, Base64.DEFAULT)
+                                                val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                                                if (bitmap != null) viewBitmap = bitmap
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "Error opening photo", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        } else if (rawPhoto.isNotEmpty()) {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(rawPhoto))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "Cannot open photo", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFE3F2FD)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "📸 Photo attached (Tap to view)",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF1565C0),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
+                        if (hasProof) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (complaint.proofPhotoUrl.startsWith("base64:")) {
+                                            try {
+                                                val pureBase64 = complaint.proofPhotoUrl.removePrefix("base64:")
+                                                val decodedString = Base64.decode(pureBase64, Base64.DEFAULT)
+                                                val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                                                if (bitmap != null) viewBitmap = bitmap
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "Error opening proof", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        } else if (complaint.proofPhotoUrl.isNotEmpty()) {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(complaint.proofPhotoUrl))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                android.widget.Toast.makeText(context, "Cannot open proof", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFE8F5E9)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "✅ Resolution Proof attached (Tap to view)",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF2E7D32),
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                         }
@@ -224,110 +464,53 @@ fun ComplaintStatusScreen(
                 }
             }
 
-            if (complaint.status == "Resolved" && (complaint.proofPhotoUrl.isNotEmpty() || complaint.proofVideoUrl.isNotEmpty())) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Resolution Proof from Staff", fontWeight = FontWeight.Bold, color = Color.DarkGray)
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (complaint.proofPhotoUrl.isNotEmpty()) {
-                        Button(
-                            onClick = {
-                                if (complaint.proofPhotoUrl.startsWith("base64:")) {
-                                    try {
-                                        val pureBase64 = complaint.proofPhotoUrl.removePrefix("base64:")
-                                        val decodedString = android.util.Base64.decode(pureBase64, android.util.Base64.DEFAULT)
-                                        val bitmap = android.graphics.BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
-                                        if (bitmap != null) viewBitmap = bitmap
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "Error opening proof", android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                } else {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(complaint.proofPhotoUrl))
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(context, "Cannot open link", android.widget.Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("📸 Proof Photo", fontSize = 10.sp)
-                        }
-                    }
-                    
-                    if (complaint.proofVideoUrl.isNotEmpty()) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(complaint.proofVideoUrl))
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(context, "Cannot open video", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("🎥 Proof Video", fontSize = 10.sp)
-                        }
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(
-                onClick = onBackClick,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
-            ) {
-                Text("Back To Home", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
+            Spacer(modifier = Modifier.height(30.dp))
         }
     }
 }
 
-@Composable
-fun AttachmentBadgeM3(text: String, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
-    Surface(
-        color = Color(0xFFF5F7FA),
-        shape = RoundedCornerShape(8.dp),
-        modifier = modifier.clickable { onClick() }
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.DarkGray
-        )
-    }
-}
+data class TimelineStep(
+    val label: String,
+    val isDone: Boolean,
+    val icon: String
+)
 
 @Composable
-fun StatusItemM3(label: String, value: String, icon: String, valueColor: Color = Color.Black) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+fun DetailRowItem(label: String, value: String) {
+    if (value.isBlank()) return
+    Column {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(icon, fontSize = 24.sp)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(label, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
-                Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
-            }
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                color = Color(0xFF757575)
+            )
+            Text(
+                text = value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF212121),
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(max = 220.dp)
+            )
         }
+        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 1.dp)
+    }
+}
+
+fun formatComplaintDate(date: java.util.Date?): String {
+    val targetDate = date ?: java.util.Date()
+    return try {
+        val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        formatter.format(targetDate)
+    } catch (e: Exception) {
+        val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        formatter.format(java.util.Date())
     }
 }

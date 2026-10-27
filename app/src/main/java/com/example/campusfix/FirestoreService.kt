@@ -50,7 +50,7 @@ object FirestoreService {
     }
 
     // 100% FREE Base64 storage - No Card or Setup required
-    suspend fun submitComplaint(context: Context, complaint: ComplaintData): Result<Unit> {
+            suspend fun submitComplaint(context: Context, complaint: ComplaintData): Result<ComplaintData> {
         return try {
             val currentUser = FirebaseAuth.getInstance().currentUser
             val currentUid = currentUser?.uid ?: ""
@@ -88,6 +88,7 @@ object FirestoreService {
             // Respect anonymity: Don't overwrite student info if it's already set to "anonymous"
             val finalStudentUid = if (complaint.studentUid == "anonymous") "anonymous" else currentUid
             val finalStudentEmail = if (complaint.studentUid == "anonymous") "anonymous@campus.edu" else studentEmail
+            val now = java.util.Date()
 
             val finalComplaint = complaint.copy(
                 ticketId = ticketId, 
@@ -99,7 +100,8 @@ object FirestoreService {
                 collegeId = collegeId,
                 status = finalStatus, 
                 assignedStaffId = assignedStaff?.uid ?: "",
-                assignedStaffEmail = assignedStaff?.email ?: ""
+                assignedStaffEmail = assignedStaff?.email ?: "",
+                createdAt = now
             )
 
             db.collection("all_complaints").document(ticketId).set(finalComplaint).await()
@@ -113,7 +115,7 @@ object FirestoreService {
                 }
             }
 
-            Result.success(Unit)
+            Result.success(finalComplaint)
         } catch (e: Exception) {
             Log.e(TAG, "Submission error", e)
             Result.failure(e)
@@ -331,12 +333,21 @@ object FirestoreService {
     fun getStudentsByCollege(college: String): Flow<List<UserData>> = callbackFlow {
         val collegeId = getCollegeId(college)
         val subscription = db.collection("users")
-            .whereEqualTo("role", "student")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { close(error); return@addSnapshotListener }
-                val students = snapshot?.documents?.mapNotNull { it.toObject<UserData>() }?.filter {
-                    getCollegeId(it.collegeName) == collegeId
-                } ?: emptyList()
+                val allUsers = snapshot?.documents?.mapNotNull { mapDocToUserData(it) } ?: emptyList()
+                val students = allUsers.filter { user ->
+                    val isStudent = user.role.isBlank() || 
+                                   user.role.equals("student", ignoreCase = true) ||
+                                   (user.role != "staff" && user.role != "admin")
+                    val instMatch = college.isBlank() || 
+                                   collegeId == "general" ||
+                                   user.collegeName.isBlank() ||
+                                   getCollegeId(user.collegeName) == collegeId ||
+                                   getCollegeId(user.collegeName).contains(collegeId) ||
+                                   collegeId.contains(getCollegeId(user.collegeName))
+                    isStudent && instMatch
+                }
                 trySend(students)
             }
         awaitClose { subscription.remove() }
@@ -345,6 +356,15 @@ object FirestoreService {
     suspend fun removeUser(uid: String): Result<Unit> {
         return try {
             db.collection("users").document(uid).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    suspend fun deleteComplaint(ticketId: String): Result<Unit> {
+        return try {
+            if (ticketId.isNotBlank()) {
+                db.collection("all_complaints").document(ticketId).delete().await()
+            }
             Result.success(Unit)
         } catch (e: Exception) { Result.failure(e) }
     }

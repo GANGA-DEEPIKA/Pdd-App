@@ -1,10 +1,35 @@
-// student-dashboard.js — Mirrors StudentDashboardScreen.kt
 import { AppState, navigateTo, goBack } from '../app.js';
 import { auth } from '../firebase-config.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { showToast } from './utils.js';
 
 export function renderStudentDashboard(container) {
-  const list = AppState.complaintList;
+  // Strict role check: ONLY student accounts are allowed
+  const user = AppState.currentUserData;
+  const currentEmail = (auth.currentUser?.email || user?.email || '').toLowerCase().trim();
+  const isInvalidStudent = !user || user.role !== 'student' || currentEmail.startsWith('admin') || currentEmail.startsWith('staff');
+
+  if (isInvalidStudent) {
+    const actualRole = (user?.role === 'admin' || currentEmail.startsWith('admin')) ? 'Admin'
+      : (user?.role === 'staff' || currentEmail.startsWith('staff')) ? 'Staff'
+      : 'User';
+    auth.signOut();
+    AppState.currentUserData = null;
+    showToast(`Role Mismatch: This account is registered as ${actualRole}.`, 'error');
+    navigateTo('role');
+    return;
+  }
+
+  let list = AppState.complaintList;
+  if ((!list || list.length === 0) && user?.uid) {
+    try {
+      const cached = localStorage.getItem(`campusfix_complaints_${user.uid}`);
+      if (cached) {
+        list = JSON.parse(cached);
+        AppState.complaintList = list;
+      }
+    } catch {}
+  }
   const active = list.filter(c => ['Pending','In Progress','Assigned'].includes(c.status) || (c.status||'').startsWith('Waiting')).length;
   const resolved = list.filter(c => c.status === 'Resolved').length;
   const total = list.length;
@@ -38,15 +63,21 @@ export function renderStudentDashboard(container) {
       <!-- Stats row -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
         <div class="mini-stat-card" id="dash-active" data-filter="active">
-          <div style="font-size:28px;font-weight:800;color:#FF9800;">${active}</div>
+          <div style="font-size:28px;font-weight:800;color:#FF9800;min-height:34px;display:flex;align-items:center;justify-content:center;">
+            ${AppState.complaintsLoaded ? active : '<span class="stat-spinner" style="border-top-color:#FF9800;"></span>'}
+          </div>
           <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);">Active</div>
         </div>
         <div class="mini-stat-card" id="dash-resolved" data-filter="Resolved">
-          <div style="font-size:28px;font-weight:800;color:#4CAF50;">${resolved}</div>
+          <div style="font-size:28px;font-weight:800;color:#4CAF50;min-height:34px;display:flex;align-items:center;justify-content:center;">
+            ${AppState.complaintsLoaded ? resolved : '<span class="stat-spinner" style="border-top-color:#4CAF50;"></span>'}
+          </div>
           <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);">Resolved</div>
         </div>
         <div class="mini-stat-card" id="dash-total" data-filter="all">
-          <div style="font-size:28px;font-weight:800;color:white;">${total}</div>
+          <div style="font-size:28px;font-weight:800;color:white;min-height:34px;display:flex;align-items:center;justify-content:center;">
+            ${AppState.complaintsLoaded ? total : '<span class="stat-spinner" style="border-top-color:white;"></span>'}
+          </div>
           <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);">Total</div>
         </div>
       </div>
@@ -66,6 +97,13 @@ export function renderStudentDashboard(container) {
   <style>
     .mini-stat-card { background:rgba(255,255,255,0.12);border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;transition:background 0.2s; }
     .mini-stat-card:hover { background:rgba(255,255,255,0.22); }
+    .stat-spinner {
+      width: 22px; height: 22px;
+      border: 2.5px solid rgba(255,255,255,0.25);
+      border-radius: 50%;
+      display: inline-block;
+      animation: spin 0.7s linear infinite;
+    }
     .svc-card-compact {
       border-radius:16px;
       height:110px;
@@ -94,6 +132,7 @@ export function renderStudentDashboard(container) {
     await signOut(auth);
     AppState.currentUserData = null;
     AppState.complaintList = [];
+    AppState.complaintsLoaded = false;
     AppState.navigationStack = [];
     navigateTo('login', { title: 'Student Sign In', emailHint: 'student_name@college.edu' });
   });

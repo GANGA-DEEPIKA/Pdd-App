@@ -2,7 +2,7 @@ package com.example.campusfix
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,12 +11,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -44,148 +44,326 @@ fun ReviewComplaintScreen(
     val scope = rememberCoroutineScope()
     var isSubmitting by remember { mutableStateOf(false) }
 
+    val hasPhoto = complaint.photoUri.isNotEmpty() || complaint.photoUrl.isNotEmpty()
+    val hasVideo = complaint.videoUri.isNotEmpty() || complaint.videoUrl.isNotEmpty()
+    val hasVoice = complaint.voicePath.isNotEmpty() || complaint.voiceUrl.isNotEmpty()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F7FA))
+            .background(Color(0xFFF8F9FA))
     ) {
+        // App Bar Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
-            shadowElevation = 4.dp
+            shadowElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
-                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Review Details", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Review Complaint",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
             }
         }
 
+        // Main Content Area
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Summary",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            // Top Blue Info Banner
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFE3F2FD)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text("ℹ️", fontSize = 22.sp, modifier = Modifier.padding(top = 2.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Please review before submitting",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Once submitted, you'll receive a ticket ID for tracking.",
+                            fontSize = 12.sp,
+                            color = Color(0xFF1565C0).copy(alpha = 0.85f),
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
 
-            ReviewItemM3("Ticket ID", complaint.ticketId)
-            ReviewItemM3("Title", complaint.title)
-            ReviewItemM3("Category", complaint.category)
-            ReviewItemM3("Location", complaint.location)
-            ReviewItemM3("Description", complaint.details)
-            
             Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Attachments",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
+
+            // Complaint Details Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (complaint.photoUri.isNotEmpty()) {
-                        AttachmentRow("📷", "Photo Attached") {
-                            viewAttachment(context, Uri.parse(complaint.photoUri), "image/*")
-                        }
-                    }
-                    if (complaint.videoUri.isNotEmpty()) {
-                        AttachmentRow("🎥", "Video Attached") {
-                            viewAttachment(context, Uri.parse(complaint.videoUri), "video/*")
-                        }
-                    }
-                    if (complaint.voicePath.isNotEmpty()) {
-                        AttachmentRow("🎙", "Voice Note Attached") {
-                            viewAttachment(context, Uri.fromFile(File(complaint.voicePath)), "audio/*")
-                        }
-                    }
-                    
-                    if (complaint.photoUri.isEmpty() && complaint.videoUri.isEmpty() && complaint.voicePath.isEmpty()) {
-                        Text("No attachments", color = Color.Gray, fontSize = 14.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            if (isSubmitting) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF1565C0))
-                }
-            } else {
-                Button(
-                    onClick = {
-                        isSubmitting = true
-                        scope.launch {
-                            try {
-                                onSubmitClick()
-                            } catch (e: Exception) {
-                                android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                            } finally {
-                                isSubmitting = false
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    Text("Confirm & Submit", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Complaint Details",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ReviewRowItem("Subject", complaint.title)
+                    ReviewRowItem("Category", complaint.category)
+                    ReviewRowItem("Location", complaint.location)
+                    ReviewRowItem("Priority", if (complaint.priority.isNotBlank()) complaint.priority else "Medium")
+                    ReviewRowItem("College", complaint.collegeName)
+
+                    if (complaint.details.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Description",
+                            fontSize = 12.sp,
+                            color = Color(0xFF757575)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF5F7FA)
+                        ) {
+                            Text(
+                                text = complaint.details,
+                                fontSize = 13.sp,
+                                color = Color(0xFF333333),
+                                lineHeight = 18.sp,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
                 }
             }
-            
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Attachments Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "Attachments",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF555555)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (hasPhoto) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (complaint.photoUri.isNotEmpty()) {
+                                        viewAttachment(context, Uri.parse(complaint.photoUri), "image/*")
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "✅ Photo attached",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+
+                    if (hasVideo) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (complaint.videoUri.isNotEmpty()) {
+                                        viewAttachment(context, Uri.parse(complaint.videoUri), "video/*")
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "✅ Video attached",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+
+                    if (hasVoice) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (complaint.voicePath.isNotEmpty()) {
+                                        viewAttachment(context, Uri.fromFile(File(complaint.voicePath)), "audio/*")
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "✅ Voice recording attached",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+
+                    if (!hasPhoto && !hasVideo && !hasVoice) {
+                        Text(
+                            text = "No attachments",
+                            fontSize = 13.sp,
+                            color = Color(0xFF9E9E9E)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Submit Button
+            Button(
+                onClick = {
+                    isSubmitting = true
+                    scope.launch {
+                        try {
+                            onSubmitClick()
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isSubmitting = false
+                        }
+                    }
+                },
+                enabled = !isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1565C0)
+                )
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("✅ ", fontSize = 16.sp)
+                        Text(
+                            text = "Confirm & Submit",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Edit Button
+            Button(
+                onClick = onBackClick,
+                enabled = !isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE3F2FD),
+                    contentColor = Color(0xFF1565C0)
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text("✏️ ", fontSize = 16.sp)
+                    Text(
+                        text = "Edit Complaint",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-fun AttachmentRow(icon: String, text: String, onClick: (() -> Unit)? = null) {
-    Row(
-        modifier = Modifier
-            .padding(vertical = 4.dp)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(icon, fontSize = 20.sp)
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-fun ReviewItemM3(label: String, value: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(label, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0), fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = value, fontSize = 16.sp, color = Color.Black)
+fun ReviewRowItem(label: String, value: String) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                color = Color(0xFF757575)
+            )
+            Text(
+                text = if (value.isNotBlank()) value else "—",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF212121),
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(max = 220.dp)
+            )
         }
+        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 1.dp)
     }
 }

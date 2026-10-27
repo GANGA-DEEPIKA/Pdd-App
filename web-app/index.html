@@ -9,9 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <!-- Firebase SDK -->
-  <script type="module" src="firebase-config.js"></script>
-  <script type="module" src="app.js?v=3"></script>
+  <script type="module" src="app.js?v=20261027_02"></script>
 </head>
 <body>
   <div id="app">
@@ -25,6 +23,29 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Safeguard: Detect if opened as a local file instead of http://localhost:3000
+    if (window.location.protocol === 'file:') {
+      window.addEventListener('DOMContentLoaded', () => {
+        const splash = document.getElementById('splash');
+        if (splash) {
+          splash.innerHTML = `
+            <div class="splash-content" style="max-width: 480px; padding: 24px; text-align: center; background: white; color: #1f2937; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+              <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+              <h2 style="font-size: 20px; font-weight: 700; color: #dc2626; margin-bottom: 8px;">Opened as File</h2>
+              <p style="font-size: 14px; color: #4b5563; line-height: 1.5; margin-bottom: 16px;">
+                Modern web applications require an HTTP server. Opening <code>index.html</code> directly from your file system blocks script modules.
+              </p>
+              <a href="http://localhost:3000" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                Open http://localhost:3000
+              </a>
+            </div>
+          `;
+        }
+      });
+    }
+  </script>
 
   <!-- Toast notification container -->
   <div id="toast-container"></div>

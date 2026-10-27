@@ -250,6 +250,10 @@ fun LoginScreen(
                                                     auth.signOut()
                                                     errorMessage = "Access Denied. Waiting for Admin Approval."
                                                     isSuccess = false
+                                                } else if (rolePrefix.isNotEmpty() && user.role.isNotEmpty() && !user.role.equals(rolePrefix, ignoreCase = true)) {
+                                                    auth.signOut()
+                                                    errorMessage = "Role Mismatch: This account is registered as ${user.role.replaceFirstChar { it.uppercase() }}."
+                                                    isSuccess = false
                                                 } else {
                                                     if (savePassword) {
                                                         val currentSaved = sharedPref.getStringSet("saved_accounts", emptySet()) ?: emptySet()

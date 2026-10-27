@@ -34,7 +34,7 @@ fun StudentDashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F7FA))
-            .padding(20.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -46,25 +46,25 @@ fun StudentDashboardScreen(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         
         Text(
             text = "Student Dashboard",
-            fontSize = 32.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1565C0)
         )
         Text(
             text = "Welcome back to CampusFix",
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             color = Color.Gray
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             SummaryCard(
                 title = "Active", 
@@ -86,13 +86,13 @@ fun StudentDashboardScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
             text = "Services",
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         val menuItems = listOf(
@@ -108,8 +108,8 @@ fun StudentDashboardScreen(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
             items(menuItems) { item ->
@@ -126,30 +126,32 @@ fun ServiceCard(item: DashboardMenuItem) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1.1f)
+            .height(98.dp)
             .clickable { item.onClick() },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                modifier = Modifier.size(50.dp),
+                modifier = Modifier.size(42.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = Color(0xFFF5F7FA)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(item.icon, fontSize = 24.sp)
+                    Text(item.icon, fontSize = 22.sp)
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = item.title,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF333333),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

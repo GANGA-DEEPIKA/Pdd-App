@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "start": "npx serve web-app -l 3000",
+    "web": "python -m http.server 8000 --directory web-app"
+  },
   "dependencies": {
     "exceljs": "^4.4.0"
   }

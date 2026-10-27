@@ -14,14 +14,20 @@ import com.example.campusfix.ui.theme.CampusFixTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CampusFixTheme(dynamicColor = false) {
+            CampusFixTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color.White
                 ) {
                     CampusFixApp()
                 }
@@ -101,11 +107,13 @@ fun CampusFixApp() {
         goBack()
     }
 
-    when (screen) {
-        "college" -> CollegeSelectionScreen { name ->
-            collegeName = name
-            navigateTo("role")
-        }
+    // Safety net: White background box to ensure something always renders
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        when (screen) {
+            "college" -> CollegeSelectionScreen { name ->
+                collegeName = name
+                navigateTo("role")
+            }
 
         "role" -> RoleSelectionScreen(
             onStudentClick = { navigateTo("login") },
@@ -254,6 +262,10 @@ fun CampusFixApp() {
                 try {
                     val result = FirestoreService.submitComplaint(context, complaintData)
                     if (result.isSuccess) {
+                        val submitted = result.getOrNull() ?: complaintData.copy(createdAt = java.util.Date())
+                        complaintData = submitted.copy(
+                            createdAt = submitted.createdAt ?: java.util.Date()
+                        )
                         Toast.makeText(context, "Complaint submitted successfully! ✅", Toast.LENGTH_LONG).show()
                         if (navigationStack.isNotEmpty()) {
                             navigationStack.removeAt(navigationStack.size - 1)
@@ -306,7 +318,7 @@ fun CampusFixApp() {
 
         "emergencyComplaint" -> EmergencyComplaintScreen(onBackClick = { goBack() })
         "anonymousComplaint" -> AnonymousComplaintScreen(onBackClick = { goBack() })
-        "notification" -> NotificationScreen { goBack() }
+        "notification" -> NotificationScreen(complaintList = complaintList, onBackClick = { goBack() })
         "feedback" -> FeedbackScreen(collegeName = currentUserData?.collegeName ?: collegeName) { goBack() }
         "studentProfile" -> StudentProfileScreen(
             onBackClick = { goBack() },
@@ -363,9 +375,13 @@ fun CampusFixApp() {
             initialTicketId = complaintData.ticketId,
             onBackClick = { goBack() }
         )
-        "performanceSummary" -> PerformanceSummaryScreen { goBack() }
-        "globalSettings" -> GlobalSettingsScreen { goBack() }
+        "performanceSummary" -> PerformanceSummaryScreen(complaintList = complaintList, onBackClick = { goBack() })
+        "globalSettings" -> GlobalSettingsScreen(complaintList = complaintList, currentUserData = currentUserData, collegeName = collegeName, onBackClick = { goBack() })
         "staffApproval" -> StaffApprovalScreen(
+            college = currentUserData?.collegeName ?: collegeName,
+            onBackClick = { goBack() }
+        )
+        "manageStudents" -> ManageStudentsScreen(
             college = currentUserData?.collegeName ?: collegeName,
             onBackClick = { goBack() }
         )
@@ -376,4 +392,5 @@ fun CampusFixApp() {
              }
         }
     }
-}
+} // Closed Box
+} // Closed CampusFixApp

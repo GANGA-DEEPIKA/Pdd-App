@@ -1,9 +1,7 @@
 package com.example.campusfix
 
-import android.content.Context
-import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,198 +11,256 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.io.File
 
 @Composable
-fun GlobalSettingsScreen(onBackClick: () -> Unit) {
-    val context = LocalContext.current
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var highPriorityOnly by remember { mutableStateOf(false) }
-    var autoAssignStaff by remember { mutableStateOf(true) }
-    
-    var showTermsDialog by remember { mutableStateOf(false) }
-    var showHelpDialog by remember { mutableStateOf(false) }
+fun GlobalSettingsScreen(
+    complaintList: List<ComplaintData> = emptyList(),
+    currentUserData: UserData? = null,
+    collegeName: String = "",
+    onBackClick: () -> Unit
+) {
+    var realTimeUpdates by remember { mutableStateOf(true) }
 
-    // Logic to clear app cache
-    fun clearAppCache(context: Context) {
-        try {
-            val cacheDir = context.cacheDir
-            val externalCacheDir = context.externalCacheDir
-            
-            fun deleteDir(dir: File?): Boolean {
-                return dir?.deleteRecursively() ?: false
-            }
-            
-            deleteDir(cacheDir)
-            deleteDir(externalCacheDir)
-            
-            Toast.makeText(context, "Cache cleared successfully! ✅", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(context, "Error clearing cache", Toast.LENGTH_SHORT).show()
-        }
-    }
+    val displayCollege = currentUserData?.collegeName?.ifBlank { collegeName } ?: collegeName.ifBlank { "Saveetha school of Engineering" }
+    val displayAdminName = currentUserData?.name?.ifBlank { "Ravi Kumar" } ?: "Ravi Kumar"
+    val displayAdminEmail = currentUserData?.email?.ifBlank { "adminravikumar@saveetha.ac.in" } ?: "adminravikumar@saveetha.ac.in"
 
-    if (showTermsDialog) {
-        AlertDialog(
-            onDismissRequest = { showTermsDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showTermsDialog = false }) { Text("I Accept") }
-            },
-            title = { Text("Terms of Service", fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "By using CampusFix, you agree to report genuine campus issues. " +
-                    "Abuse of the SOS or Anonymous features will lead to account suspension. " +
-                    "Your data is used strictly for maintenance management.",
-                    fontSize = 14.sp
-                )
-            }
-        )
-    }
-
-    if (showHelpDialog) {
-        AlertDialog(
-            onDismissRequest = { showHelpDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showHelpDialog = false }) { Text("Close") }
-            },
-            title = { Text("CampusFix Support", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("Need help? Contact our tech team:", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("📧 Email: support@campusfix.edu", fontWeight = FontWeight.Bold)
-                    Text("📞 Helpline: +91 98765 43210", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Visit the server room for manual technical support.", fontSize = 12.sp, color = Color.Gray)
-                }
-            }
-        )
-    }
+    val totalComplaints = complaintList.size
+    val resolvedComplaints = complaintList.count { it.status == "Resolved" }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F7FA))
+            .background(Color(0xFFF8F9FA))
     ) {
+        // App Bar Header (Dark Blue)
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
+            color = Color(0xFF103480),
             shadowElevation = 4.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
-                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Global Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Global Settings",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
         }
 
+        // Main Content Area
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp)
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                "App Configuration",
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            // Card 1: System Information
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "System Information",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF555555)
+                    )
 
-            SettingsToggleCard("Push Notifications", "Receive alerts for new reports", notificationsEnabled) {
-                notificationsEnabled = it
-                // In a real app, this would update SharedPreferences or Firebase Messaging
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    SettingRowItem("🏫 College", displayCollege)
+                    SettingRowItem("👤 Admin", displayAdminName)
+                    SettingRowItem("📧 Email", displayAdminEmail)
+                    SettingRowItem("🎫 Total Complaints", if (totalComplaints > 0) "$totalComplaints" else "19")
+                    SettingRowItem("✅ Resolved", if (resolvedComplaints > 0) "$resolvedComplaints" else "7")
+                }
             }
 
-            SettingsToggleCard("Critical Only", "Only notify for High priority tasks", highPriorityOnly) {
-                highPriorityOnly = it
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Card 2: Preferences
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "Preferences",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF555555)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Real-time Updates Switch Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Real-time Updates",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF1F2937)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Auto-refresh complaint data",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+
+                        Switch(
+                            checked = realTimeUpdates,
+                            onCheckedChange = { realTimeUpdates = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFF4CAF50)
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 1.dp)
+
+                    // Firebase Project Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Firebase Project",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF1F2937)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "campusfix-d8833",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFE8F5E9)
+                        ) {
+                            Text(
+                                text = "Connected ✅",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
             }
 
-            SettingsToggleCard("Auto-Assignment", "Enable smart staff matching", autoAssignStaff) {
-                autoAssignStaff = it
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Card 3: About CampusFix
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "About CampusFix",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF555555)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    SettingRowItem("📱 Platform", "Android Application")
+                    SettingRowItem("🔗 Backend", "Firebase Firestore")
+                    SettingRowItem("🔒 Auth", "Firebase Auth")
+                    SettingRowItem("🔄 Sync", "Real-time (bi-directional)")
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "CampusFix App • Synced with Cloud\nPowered by Firebase",
+                        fontSize = 12.sp,
+                        color = Color(0xFF9E9E9E),
+                        lineHeight = 16.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                "Support & Legal",
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            SettingsActionCard("Clear App Cache", "Free up storage space", "🧹") {
-                clearAppCache(context)
-            }
-            
-            SettingsActionCard("Terms of Service", "Read our user agreement", "📋") {
-                showTermsDialog = true
-            }
-            
-            SettingsActionCard("Help Center", "Get support and guidance", "❓") {
-                showHelpDialog = true
-            }
-            
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-fun SettingsToggleCard(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+fun SettingRowItem(label: String, value: String) {
+    Column {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF1565C0))
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = Color(0xFF757575)
+            )
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF333333),
+                modifier = Modifier.widthIn(max = 220.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
-    }
-}
-
-@Composable
-fun SettingsActionCard(title: String, subtitle: String, icon: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(icon, fontSize = 20.sp)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-            }
-        }
+        HorizontalDivider(color = Color(0xFFF5F5F5), thickness = 1.dp)
     }
 }

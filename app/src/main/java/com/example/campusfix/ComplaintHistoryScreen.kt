@@ -1,5 +1,7 @@
 package com.example.campusfix
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,13 +9,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 @Composable
 fun ComplaintHistoryScreen(
@@ -22,6 +26,42 @@ fun ComplaintHistoryScreen(
     onComplaintClick: (ComplaintData) -> Unit,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var deletingTicketId by remember { mutableStateOf<String?>(null) }
+
+    if (deletingTicketId != null) {
+        val targetTicket = deletingTicketId
+        AlertDialog(
+            onDismissRequest = { deletingTicketId = null },
+            title = { Text("Delete Complaint", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete complaint ticket $targetTicket?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val ticket = targetTicket ?: ""
+                        deletingTicketId = null
+                        scope.launch {
+                            val result = FirestoreService.deleteComplaint(ticket)
+                            if (result.isSuccess) {
+                                Toast.makeText(context, "Complaint deleted successfully! 🗑️", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Failed to delete complaint", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                ) {
+                    Text("Delete", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingTicketId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,7 +99,11 @@ fun ComplaintHistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(complaintList) { item ->
-                    HistoryCardM3(item, onClick = { onComplaintClick(item) })
+                    HistoryCardM3(
+                        item = item,
+                        onClick = { onComplaintClick(item) },
+                        onDeleteClick = { deletingTicketId = item.ticketId }
+                    )
                 }
             }
         }
@@ -67,12 +111,19 @@ fun ComplaintHistoryScreen(
 }
 
 @Composable
-fun HistoryCardM3(item: ComplaintData, onClick: () -> Unit) {
+fun HistoryCardM3(
+    item: ComplaintData,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -92,7 +143,7 @@ fun HistoryCardM3(item: ComplaintData, onClick: () -> Unit) {
                         color = Color.Gray
                     )
                 }
-                
+
                 Text(
                     text = item.status,
                     fontSize = 13.sp,
@@ -100,23 +151,48 @@ fun HistoryCardM3(item: ComplaintData, onClick: () -> Unit) {
                     color = if (item.status.contains("Resolved")) Color(0xFF2E7D32) else Color(0xFF1565C0)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Text(
                 text = item.title,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Ticket: ${item.ticketId}",
-                fontSize = 12.sp,
-                color = Color.LightGray
-            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Ticket: ${item.ticketId}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                Surface(
+                    color = Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.clickable { onDeleteClick() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🗑️ ", fontSize = 12.sp)
+                        Text(
+                            text = "Delete",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
+                }
+            }
         }
     }
 }

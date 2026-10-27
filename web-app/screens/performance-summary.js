@@ -7,7 +7,7 @@ export function renderPerformanceSummary(container) {
   const resolved = list.filter(c => c.status === 'Resolved').length;
   const pending = list.filter(c => c.status === 'Pending' || c.status === 'Assigned' || (c.status||'').startsWith('Waiting')).length;
   const inProgress = list.filter(c => c.status === 'In Progress').length;
-  const resolveRate = total > 0 ? Math.round(resolved / total * 100) : 0;
+  const resolveRate = total > 0 ? Math.floor(resolved / total * 100) : 0;
 
   // Category breakdown
   const catMap = {};
@@ -70,7 +70,7 @@ export function renderPerformanceSummary(container) {
             <span style="font-size:12px;color:#757575;">${data.resolved}/${data.total} resolved</span>
           </div>
           <div style="background:#F5F5F5;border-radius:8px;height:8px;">
-            <div style="background:#1565C0;border-radius:8px;height:8px;width:${Math.round(data.total/maxCat*100)}%;"></div>
+            <div style="background:#1565C0;border-radius:8px;height:8px;width:${data.total > 0 ? Math.round(data.resolved / data.total * 100) : 0}%;"></div>
           </div>
         </div>`).join('')}
       </div>` : ''}

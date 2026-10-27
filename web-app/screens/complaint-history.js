@@ -1,10 +1,12 @@
 // complaint-history.js — Mirrors ComplaintHistoryScreen.kt
 import { AppState, navigateTo, goBack } from '../app.js';
-import { formatDate, getStatusBadgeClass, getComplaintBorderClass } from './utils.js';
+import { formatDate, getStatusBadgeClass, getComplaintBorderClass, showToast } from './utils.js';
+import { db } from '../firebase-config.js';
+import { doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 export function renderComplaintHistory(container) {
-  const filter = AppState.filterType;
-  const allList = AppState.complaintList;
+  const filter = AppState.filterType || 'all';
+  const allList = AppState.complaintList || [];
 
   let title, filteredList;
   if (filter === 'Resolved') { title = 'Resolved Complaints'; filteredList = allList.filter(c => c.status === 'Resolved'); }
@@ -16,12 +18,6 @@ export function renderComplaintHistory(container) {
     <div class="app-bar">
       <button class="back-btn" id="ch-back">←</button>
       <span class="app-bar-title">${title}</span>
-      <span style="margin-left:auto;background:#E3F2FD;color:#1565C0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;">${filteredList.length}</span>
-    </div>
-    <!-- Filter tabs -->
-    <div style="background:white;padding:0 16px;display:flex;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-      ${['all','active','Resolved'].map(f => `
-      <button class="filter-tab${AppState.filterType===f?' active-tab':''}" data-filter="${f}">${f==='all'?'All':f==='active'?'Active':'Resolved'}</button>`).join('')}
     </div>
     <div style="padding:16px;overflow-y:auto;flex:1;padding-bottom:40px;" id="history-list">
       ${filteredList.length === 0 ? `
@@ -39,23 +35,23 @@ export function renderComplaintHistory(container) {
           </div>
           <span class="badge ${getStatusBadgeClass(c.status)}">${c.status || 'Pending'}</span>
         </div>
-        <div class="complaint-meta">📍 ${c.location || 'N/A'} &nbsp;•&nbsp; ${formatDate(c.createdAt)} &nbsp;•&nbsp; 🎟 ${c.ticketId}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+          <div class="complaint-meta" style="margin-top:0;">📍 ${c.location || 'N/A'} &nbsp;•&nbsp; ${formatDate(c.createdAt)} &nbsp;•&nbsp; 🖊️ ${c.ticketId}</div>
+          <button class="delete-complaint-btn" data-ticket="${c.ticketId}" style="background:#FFEBEE;color:#DC2626;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background 0.2s;">
+            🗑️ Delete
+          </button>
+        </div>
       </div>`).join('')}
     </div>
   </div>
   <style>
-    .filter-tab { background:none;border:none;padding:12px 16px;font-size:14px;font-weight:600;color:#757575;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s; }
-    .active-tab { color:#1565C0;border-bottom-color:#1565C0; }
+    .delete-complaint-btn:hover {
+      background: #FFCDD2 !important;
+      transform: scale(1.02);
+    }
   </style>`;
 
   document.getElementById('ch-back').addEventListener('click', goBack);
-
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      AppState.filterType = tab.dataset.filter;
-      renderComplaintHistory(container);
-    });
-  });
 
   document.querySelectorAll('.complaint-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -64,6 +60,41 @@ export function renderComplaintHistory(container) {
       if (complaint) {
         AppState.complaintData = complaint;
         navigateTo('complaintStatus');
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-complaint-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // Stop opening complaint status details
+      const ticket = btn.dataset.ticket;
+      if (!confirm(`Are you sure you want to delete complaint ticket ${ticket}?`)) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Deleting…';
+
+      try {
+        if (ticket) {
+          await deleteDoc(doc(db, 'all_complaints', ticket));
+        }
+        showToast('Complaint deleted successfully! 🗑️', 'success');
+        AppState.complaintList = AppState.complaintList.filter(c => c.ticketId !== ticket);
+
+        if (AppState.currentUserData?.uid) {
+          try {
+            const cacheKey = `campusfix_complaints_${AppState.currentUserData.uid}`;
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            const updated = cached.filter(c => c.ticketId !== ticket);
+            localStorage.setItem(cacheKey, JSON.stringify(updated));
+          } catch {}
+        }
+
+        renderComplaintHistory(container);
+      } catch (err) {
+        console.error('Delete complaint error:', err);
+        showToast('Failed to delete complaint', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '🗑️ Delete';
       }
     });
   });

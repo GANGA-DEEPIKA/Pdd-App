@@ -1,8 +1,13 @@
 package com.example.campusfix
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -10,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -19,141 +25,180 @@ fun FeedbackScreen(collegeName: String, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var feedback by remember { mutableStateOf("") }
-    var rating by remember { mutableStateOf(5) }
-    var message by remember { mutableStateOf("") }
+    var rating by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(false) }
+
+    val ratingLabels = listOf("", "Poor", "Fair", "Good", "Very Good", "Excellent")
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F7FA))
+            .background(Color(0xFFF8F9FA))
     ) {
+        // App Bar Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
-            shadowElevation = 4.dp
+            shadowElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBackClick) {
-                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("←", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Feedback", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Feedback",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
             }
         }
 
-        Column(
+        // Main Content Area
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.Center
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                border = BorderStroke(1.dp, Color(0xFFE5E7EB)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Text("⭐", fontSize = 48.sp)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = "How was your experience?",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Rate Your Experience",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = Color(0xFF1565C0)
                     )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
-                        text = "⭐".repeat(rating),
-                        fontSize = 40.sp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    
-                    Slider(
-                        value = rating.toFloat(),
-                        onValueChange = { rating = it.toInt() },
-                        valueRange = 1f..5f,
-                        steps = 3,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF1565C0),
-                            activeTrackColor = Color(0xFF1565C0)
-                        )
-                    )
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Poor", fontSize = 12.sp, color = Color.Gray)
-                        Text("Excellent", fontSize = 12.sp, color = Color.Gray)
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    OutlinedTextField(
-                        value = feedback,
-                        onValueChange = { feedback = it },
-                        label = { Text("Your Comments") },
-                        placeholder = { Text("Tell us what can be improved...") },
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black
-                        )
+                        text = "Your feedback helps us improve CampusFix",
+                        fontSize = 13.sp,
+                        color = Color(0xFF6B7280),
+                        textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color(0xFF1565C0))
-                    } else {
-                        Button(
-                            onClick = { 
-                                if (feedback.isNotBlank()) {
-                                    isLoading = true
-                                    scope.launch {
-                                        val result = FirestoreService.submitFeedback(rating, feedback, collegeName)
-                                        isLoading = false
-                                        if (result.isSuccess) {
-                                            message = "Thank you for your valuable feedback! ✅" 
-                                            feedback = ""
-                                        } else {
-                                            message = "Error: ${result.exceptionOrNull()?.message}"
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
-                            enabled = feedback.isNotBlank()
-                        ) {
-                            Text("Submit Feedback", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    // 5 Star Buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (i in 1..5) {
+                            Text(
+                                text = "⭐",
+                                fontSize = 36.sp,
+                                modifier = Modifier
+                                    .clickable { rating = i }
+                                    .padding(4.dp),
+                                color = if (i <= rating) Color.Unspecified else Color.Gray.copy(alpha = 0.35f)
+                            )
                         }
                     }
-                }
-            }
 
-            if (message.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = message,
-                        color = Color(0xFF2E7D32),
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(16.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        text = if (rating in 1..5) ratingLabels[rating] else "Tap a star to rate",
+                        fontSize = 13.sp,
+                        fontWeight = if (rating > 0) FontWeight.Bold else FontWeight.Normal,
+                        color = if (rating > 0) Color(0xFFD97706) else Color(0xFF6B7280)
                     )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Comments Field
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Comments (Optional)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF374151)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = feedback,
+                            onValueChange = { feedback = it },
+                            placeholder = { Text("Tell us about your experience...", color = Color(0xFF9CA3AF), fontSize = 14.sp) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 110.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF2563EB),
+                                unfocusedBorderColor = Color(0xFFD1D5DB),
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.Black
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Submit Button
+                    Button(
+                        onClick = {
+                            if (rating == 0) {
+                                Toast.makeText(context, "Please tap a star to rate first", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            isLoading = true
+                            scope.launch {
+                                val result = FirestoreService.submitFeedback(rating, feedback.trim(), collegeName)
+                                isLoading = false
+                                if (result.isSuccess) {
+                                    Toast.makeText(context, "Thank you for your feedback! ⭐", Toast.LENGTH_LONG).show()
+                                    onBackClick()
+                                } else {
+                                    val errorMsg = result.exceptionOrNull()?.message ?: "Submission failed"
+                                    Toast.makeText(context, "Error: $errorMsg ❌", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1565C0)
+                        )
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text(
+                                text = "Submit Feedback",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
         }

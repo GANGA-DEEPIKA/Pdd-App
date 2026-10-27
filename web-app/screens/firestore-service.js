@@ -237,3 +237,10 @@ export async function escalateComplaint(ticketId, reason) {
     escalationReason: reason
   });
 }
+
+export async function deleteComplaint(ticketId) {
+  if (ticketId) {
+    await deleteDoc(doc(db, 'all_complaints', ticketId));
+  }
+}
+

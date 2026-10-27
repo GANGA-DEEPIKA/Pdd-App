@@ -231,7 +231,7 @@ fun RegisterScreen(
                             val trimmedPassword = password.trim()
                             val trimmedPhone = phone.trim()
 
-                            if (!trimmedEmail.startsWith(rolePrefix)) {
+                            if (rolePrefix.isNotEmpty() && !trimmedEmail.contains(rolePrefix)) {
                                 message = "Use your college $rolePrefix email"
                                 isSuccess = false
                                 return@Button
