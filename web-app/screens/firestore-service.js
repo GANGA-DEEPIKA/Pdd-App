@@ -1,5 +1,6 @@
 // firestore-service.js — Mirrors FirestoreService.kt
 import { db, auth } from '../firebase-config.js';
+import { findBestDuplicateMatch } from './ai-duplicate-engine.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   addDoc, query, where, orderBy, serverTimestamp, runTransaction,
@@ -97,6 +98,7 @@ export async function submitComplaint(complaint, photoFile, audioBlob) {
     details: complaint.details || '',
     location: complaint.location || '',
     category: complaint.category || '',
+    department: complaint.department || '',
     priority: complaint.priority || 'Medium',
     status: finalStatus,
     studentEmail: isAnon ? 'anonymous@campus.edu' : email,
@@ -241,6 +243,27 @@ export async function escalateComplaint(ticketId, reason) {
 export async function deleteComplaint(ticketId) {
   if (ticketId) {
     await deleteDoc(doc(db, 'all_complaints', ticketId));
+  }
+}
+
+export async function detectDuplicateComplaint(complaint) {
+  try {
+    const rawCollege = (complaint.collegeName || '').trim();
+    const collegeId = rawCollege ? getCollegeId(rawCollege) : '';
+
+    const snap = await getDocs(collection(db, 'all_complaints'));
+    const allComplaints = snap.docs.map(d => ({ ticketId: d.id, ...d.data() }));
+
+    const scopedComplaints = allComplaints.filter(c => {
+      if (!collegeId) return true;
+      const cCollegeId = c.collegeId || getCollegeId(c.collegeName || '');
+      return cCollegeId === collegeId;
+    });
+
+    return findBestDuplicateMatch(complaint, scopedComplaints);
+  } catch (err) {
+    console.warn('AI duplicate detection fallback:', err);
+    return { isDuplicate: false, confidence: 0, matchedComplaint: null, reason: '' };
   }
 }
 

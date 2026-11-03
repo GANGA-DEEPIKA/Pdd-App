@@ -2,23 +2,30 @@ package com.example.campusfix
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.media.MediaPlayer
-import android.util.Log
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
+import android.speech.RecognizerIntent
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import java.io.File
+import java.util.Locale
 
 @Composable
 fun NewComplaintScreen(
@@ -39,6 +47,7 @@ fun NewComplaintScreen(
     var details by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    var department by remember { mutableStateOf("") }
 
     var selectedPhoto by remember { mutableStateOf<Uri?>(null) }
     var selectedVideo by remember { mutableStateOf<Uri?>(null) }
@@ -55,6 +64,11 @@ fun NewComplaintScreen(
     var message by remember { mutableStateOf("") }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
+
+    // --- AI Voice Campus Assistant State ---
+    var showVoiceReviewDialog by remember { mutableStateOf(false) }
+    var latestVoiceResult by remember { mutableStateOf<ParsedComplaintVoice?>(null) }
+    var voiceStatusText by remember { mutableStateOf("Ready") }
 
     val photoGalleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -113,6 +127,46 @@ fun NewComplaintScreen(
                 isRecording = true
                 message = "Voice recording started..."
             }
+        }
+    }
+
+    // --- Speech Recognition Launcher for AI Assistant ---
+    val speechRecognizerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { activityResult ->
+        if (activityResult.resultCode == android.app.Activity.RESULT_OK && activityResult.data != null) {
+            val spokenMatches = activityResult.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val spokenText = spokenMatches?.firstOrNull() ?: ""
+            if (spokenText.isNotBlank()) {
+                val parsed = AIVoiceAssistant.parseVoiceComplaint(spokenText)
+                latestVoiceResult = parsed
+                showVoiceReviewDialog = true
+            } else {
+                Toast.makeText(context, "No speech recognized. Please try again.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun launchVoiceAssistant() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your campus complaint in English...")
+        }
+        try {
+            speechRecognizerLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Speech recognition service unavailable on this device", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val voiceAssistantPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            launchVoiceAssistant()
+        } else {
+            Toast.makeText(context, "Microphone permission required for Voice Assistant", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -197,7 +251,7 @@ fun NewComplaintScreen(
                                 }
                                 isPlaying = true
                             } catch (e: Exception) {
-                                android.widget.Toast.makeText(context, "Cannot play audio", android.widget.Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Cannot play audio", Toast.LENGTH_SHORT).show()
                             }
                         }
                     } else {
@@ -217,7 +271,7 @@ fun NewComplaintScreen(
                                 }
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                android.widget.Toast.makeText(context, "No app found to open this", android.widget.Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "No app found to open this", Toast.LENGTH_SHORT).show()
                             }
                         }
                         showAttachmentAction = null
@@ -239,6 +293,81 @@ fun NewComplaintScreen(
                     }
                     showAttachmentAction = null
                 }) { Text("Remove", color = Color.Red) }
+            }
+        )
+    }
+
+    // --- AI Voice Assistant Review & Confirmation Dialog ---
+    if (showVoiceReviewDialog && latestVoiceResult != null) {
+        val res = latestVoiceResult!!
+        AlertDialog(
+            onDismissRequest = { showVoiceReviewDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("🤖", fontSize = 24.sp)
+                    Text("AI Extracted Details", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1565C0))
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Speech: \"${res.rawSpeech}\"",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        lineHeight = 16.sp
+                    )
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFE3F2FD),
+                        border = BorderStroke(1.dp, Color(0xFF90CAF9))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("📌 Subject: ${res.title}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF1565C0))
+                            Text("🏷️ Category: ${res.category}", fontSize = 12.sp, color = Color(0xFF333333))
+                            Text("🏢 Department: ${res.department}", fontSize = 12.sp, color = Color(0xFF512DA8), fontWeight = FontWeight.Medium)
+                            Text("📍 Location: ${res.location}", fontSize = 12.sp, color = Color(0xFF333333))
+                        }
+                    }
+
+                    Text(
+                        text = "You can edit these details in the form before submitting.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF2E7D32),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        title = res.title
+                        details = res.description
+                        category = res.category
+                        department = res.department
+                        location = res.location
+                        showVoiceReviewDialog = false
+                        Toast.makeText(context, "Details applied! Review or edit below ✅", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                ) {
+                    Text("Apply & Edit", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showVoiceReviewDialog = false
+                    voiceAssistantPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }) {
+                    Text("Speak Again 🎙️")
+                }
             }
         )
     }
@@ -284,6 +413,69 @@ fun NewComplaintScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState())
         ) {
+            // --- AI Voice Assistant Banner Button ---
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        voiceAssistantPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    },
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF1565C0),
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("🎙️", fontSize = 22.sp)
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "AI Voice Campus Assistant",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Speak in English to auto-fill details",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.25f)
+                    ) {
+                        Text(
+                            text = "Tap to Speak 🎤",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Problem Details Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -317,27 +509,40 @@ fun NewComplaintScreen(
                         )
                     )
                     
-                    // Update category only when text changes
+                    // Update category only when text changes and not manually set
                     LaunchedEffect(title, details) {
-                        if (title.isNotEmpty() || details.isNotEmpty()) {
+                        if (category.isEmpty() && (title.isNotEmpty() || details.isNotEmpty())) {
                             category = suggestCategory("$title $details")
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(8.dp)) {
-                        Text(
-                            text = "Category: $category",
-                            color = Color(0xFF1565C0),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            fontSize = 12.sp
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(8.dp)) {
+                            Text(
+                                text = "Category: ${category.ifEmpty { "General Maintenance" }}",
+                                color = Color(0xFF1565C0),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (department.isNotEmpty()) {
+                            Surface(color = Color(0xFFEDE7F6), shape = RoundedCornerShape(8.dp)) {
+                                Text(
+                                    text = department,
+                                    color = Color(0xFF512DA8),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = location,
                         onValueChange = { location = it },
-                        label = { Text("Location (e.g. Block A)") },
+                        label = { Text("Location (e.g. Block A, Room 101)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -395,8 +600,13 @@ fun NewComplaintScreen(
                 onClick = {
                     val ticket = "CMP" + System.currentTimeMillis().toString().takeLast(6)
                     val complaint = ComplaintData(
-                        title = title, details = details, location = location,
-                        category = category, ticketId = ticket, status = "Pending",
+                        title = title,
+                        details = details,
+                        location = location,
+                        category = category.ifEmpty { "General Maintenance" },
+                        department = department.ifEmpty { "Estate Maintenance Department" },
+                        ticketId = ticket,
+                        status = "Pending",
                         photoUri = selectedPhoto?.toString() ?: "",
                         videoUri = selectedVideo?.toString() ?: "",
                         voicePath = audioFilePath,

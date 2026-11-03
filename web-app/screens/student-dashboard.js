@@ -81,6 +81,17 @@ export function renderStudentDashboard(container) {
           <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);">Total</div>
         </div>
       </div>
+      <!-- AI Voice Assistant Quick Action -->
+      <div class="voice-assistant-banner" id="dash-voice-btn" style="margin-top:14px;margin-bottom:0;padding:12px 16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:18px;">🎙️</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;">AI Voice Campus Assistant</div>
+            <div style="font-size:11px;opacity:0.85;">Speak complaint in English to auto-fill</div>
+          </div>
+        </div>
+        <span style="font-size:11px;background:rgba(255,255,255,0.22);padding:4px 10px;border-radius:12px;font-weight:700;">Speak 🎤</span>
+      </div>
     </div>
     <!-- Services grid -->
     <div style="padding:12px 20px 16px;flex:1;overflow:hidden;">
@@ -116,6 +127,11 @@ export function renderStudentDashboard(container) {
     .svc-card-compact:hover { transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.13); }
     .svc-card-compact .service-label { font-size:12px;font-weight:700;color:#333;text-align:center; }
   </style>`;
+
+  document.getElementById('dash-voice-btn')?.addEventListener('click', () => {
+    AppState._openVoiceModal = true;
+    navigateTo('newComplaint');
+  });
 
   menuItems.forEach(item => {
     document.getElementById(`svc-${item.screen}`)?.addEventListener('click', () => {

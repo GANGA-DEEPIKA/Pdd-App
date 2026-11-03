@@ -10,6 +10,7 @@ data class ComplaintData(
     var details: String = "",
     var location: String = "",
     var category: String = "",
+    var department: String = "",
     var priority: String = "Medium",
     var status: String = "Pending",
     var studentEmail: String = "",

@@ -336,3 +336,4 @@ compileMasterReport().catch((err) => {
     console.error('Master compilation error:', err);
     process.exit(1);
 });
+

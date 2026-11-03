@@ -28,7 +28,8 @@ fun StudentDashboardScreen(
     onNotificationClick: () -> Unit,
     onFeedbackClick: () -> Unit,
     onProfileClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onVoiceAssistantClick: () -> Unit = onNewComplaintClick
 ) {
     Column(
         modifier = Modifier
@@ -84,6 +85,66 @@ fun StudentDashboardScreen(
                 color = Color(0xFF1565C0), 
                 modifier = Modifier.weight(1f).clickable { onFilterClick("all") }
             )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // AI Voice Assistant Banner
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onVoiceAssistantClick() },
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF1565C0),
+            shadowElevation = 2.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("🎙️", fontSize = 18.sp)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "AI Voice Campus Assistant",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Speak in English to auto-file complaint",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.22f)
+                ) {
+                    Text(
+                        text = "Speak 🎤",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

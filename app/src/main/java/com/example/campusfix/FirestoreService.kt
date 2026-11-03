@@ -49,6 +49,31 @@ object FirestoreService {
             .ifEmpty { "general" }
     }
 
+    suspend fun checkDuplicateComplaint(complaint: ComplaintData): DuplicateCheckResult {
+        return try {
+            val rawCollege = complaint.collegeName.trim()
+            val collegeId = if (rawCollege.isNotEmpty()) getCollegeId(rawCollege) else ""
+            
+            val snapshot = db.collection("all_complaints").get().await()
+            val allComplaints = snapshot.documents.mapNotNull { doc ->
+                doc.toObject<ComplaintData>()
+            }
+
+            val scopedComplaints = allComplaints.filter { c ->
+                if (collegeId.isEmpty()) true
+                else {
+                    val cCollegeId = if (c.collegeId.isNotEmpty()) c.collegeId else getCollegeId(c.collegeName)
+                    cCollegeId == collegeId
+                }
+            }
+
+            AIDuplicateEngine.findBestDuplicateMatch(complaint, scopedComplaints)
+        } catch (e: Exception) {
+            Log.e(TAG, "AI duplicate detection error", e)
+            DuplicateCheckResult()
+        }
+    }
+
     // 100% FREE Base64 storage - No Card or Setup required
             suspend fun submitComplaint(context: Context, complaint: ComplaintData): Result<ComplaintData> {
         return try {

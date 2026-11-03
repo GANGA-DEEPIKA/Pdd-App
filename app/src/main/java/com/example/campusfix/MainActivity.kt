@@ -3,22 +3,18 @@ package com.example.campusfix
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.example.campusfix.ui.theme.CampusFixTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.Alignment
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,17 +46,16 @@ fun CampusFixApp() {
     var currentUserData by remember { mutableStateOf<UserData?>(null) }
     var filterType by remember { mutableStateOf("all") } 
 
-    // Robust Auth State Listener
+    // Auth State Listener
     DisposableEffect(Unit) {
         val auth = FirebaseAuth.getInstance()
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-            val uid = firebaseAuth.currentUser?.uid
-            if (uid != null) {
+            val user = firebaseAuth.currentUser
+            if (user != null) {
                 scope.launch {
                     try {
-                        currentUserData = FirestoreService.getUserData(uid)
-                    } catch (e: Exception) {
-                        // Silent catch to prevent startup crash on network error
+                        currentUserData = FirestoreService.getUserData(user.uid)
+                    } catch (_: Exception) {
                     }
                 }
             } else {
@@ -258,6 +253,10 @@ fun CampusFixApp() {
         "reviewComplaint" -> ReviewComplaintScreen(
             complaint = complaintData,
             onBackClick = { goBack() },
+            onViewExistingClick = { existing ->
+                complaintData = existing
+                screen = "complaintStatus"
+            },
             onSubmitClick = {
                 try {
                     val result = FirestoreService.submitComplaint(context, complaintData)
