@@ -53,7 +53,7 @@ export function renderNewComplaint(container) {
           <label class="form-label">Description</label>
           <textarea id="nc-details" class="form-textarea" placeholder="Describe the problem in detail…"></textarea>
         </div>
-        <!-- AI Category Display (Identified automatically after giving the complaint) -->
+        <!-- AI-detected Category Label (Matches Android Design - identified after giving complaint) -->
         <div id="nc-category-container" style="display:none;margin-top:10px;margin-bottom:16px;">
           <div id="nc-category-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;"></div>
         </div>
@@ -177,8 +177,7 @@ export function renderNewComplaint(container) {
   const submitBtn = document.getElementById('nc-submit');
   const attachStatus = document.getElementById('attach-status');
 
-  // Auto-detect category using AI logic:
-  // "remove that Estate Maintenance Department i just need category only.Dont give general maintance also in category .just keep category only ,after giving the complaint it should identify and give the category of the compliant."
+  // Auto-detect category using AI logic (matching Android design)
   function updateCategory(overrideCategory) {
     const text = `${titleInput.value} ${detailsInput.value}`.trim();
     let cat = '';
@@ -193,11 +192,14 @@ export function renderNewComplaint(container) {
 
     AppState._ncCategory = cat;
 
-    if (cat) {
-      catTag.textContent = `Category: ${cat}`;
-      if (catContainer) catContainer.style.display = 'block';
-    } else {
-      if (catContainer) catContainer.style.display = 'none';
+    if (catTag && catContainer) {
+      if (cat) {
+        catTag.textContent = `Category: ${cat}`;
+        catContainer.style.display = 'block';
+      } else {
+        catTag.textContent = '';
+        catContainer.style.display = 'none';
+      }
     }
 
     submitBtn.disabled = !(titleInput.value.trim() && locationInput.value.trim());

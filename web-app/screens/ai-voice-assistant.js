@@ -35,7 +35,7 @@ export function parseVoiceComplaint(speech) {
     {
       cat: 'Network/WiFi',
       dept: 'IT & Campus Network Services',
-      keywords: ['wifi', 'wi-fi', 'internet', 'network', 'lan', 'ethernet', 'router', 'connection', 'signal', 'hotspot', 'disconnect', 'disconnecting', 'slow internet', 'bandwidth', 'portal', 'wifi slow']
+      keywords: ['wifi', 'wi-fi', 'internet', 'network', 'lan', 'ethernet', 'router', 'connection', 'signal', 'hotspot', 'disconnect', 'disconnecting', 'slow internet', 'bandwidth', 'portal', 'wifi slow', 'network/wifi']
     },
     {
       cat: 'Cleanliness',

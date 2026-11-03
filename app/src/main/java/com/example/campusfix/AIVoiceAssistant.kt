@@ -32,7 +32,7 @@ object AIVoiceAssistant {
         CategoryRule(
             cat = "Network/WiFi",
             dept = "IT & Campus Network Services",
-            keywords = listOf("wifi", "wi-fi", "internet", "network", "lan", "ethernet", "router", "connection", "signal", "hotspot", "disconnect", "disconnecting", "slow internet", "bandwidth", "portal", "wifi slow")
+            keywords = listOf("wifi", "wi-fi", "internet", "network", "lan", "ethernet", "router", "connection", "signal", "hotspot", "disconnect", "disconnecting", "slow internet", "bandwidth", "portal", "wifi slow", "network/wifi")
         ),
         CategoryRule(
             cat = "Cleanliness",
