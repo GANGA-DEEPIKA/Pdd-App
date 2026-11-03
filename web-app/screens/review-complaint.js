@@ -24,8 +24,7 @@ export function renderReviewComplaint(container) {
       <div class="card" style="margin-bottom:16px;">
         <h3 style="font-size:15px;font-weight:700;color:#1565C0;margin-bottom:16px;">Complaint Details</h3>
         ${row('Subject', c.title)}
-        ${row('Category', c.category || 'General Maintenance')}
-        ${row('Department', c.department || 'Estate Maintenance Department')}
+        ${c.category ? row('Category', c.category) : ''}
         ${row('Location', c.location)}
         ${row('Priority', c.priority || 'Medium')}
         ${row('College', c.collegeName)}

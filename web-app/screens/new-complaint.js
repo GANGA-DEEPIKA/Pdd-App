@@ -53,10 +53,9 @@ export function renderNewComplaint(container) {
           <label class="form-label">Description</label>
           <textarea id="nc-details" class="form-textarea" placeholder="Describe the problem in detail…"></textarea>
         </div>
-        <!-- AI Category & Department Display (Matches Android NewComplaintScreen) -->
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;margin-bottom:16px;">
-          <div id="nc-category-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">Category: General Maintenance</div>
-          <div id="nc-dept-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#512DA8;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">Estate Maintenance Department</div>
+        <!-- AI Category Display (Identified automatically after giving the complaint) -->
+        <div id="nc-category-container" style="display:none;margin-top:10px;margin-bottom:16px;">
+          <div id="nc-category-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Location *</label>
@@ -152,7 +151,6 @@ export function renderNewComplaint(container) {
             </div>
             <div style="font-size:13px;margin-bottom:3px;"><strong>📌 Subject:</strong> <span id="va-res-title"></span></div>
             <div style="font-size:13px;margin-bottom:3px;"><strong>🏷️ Category:</strong> <span id="va-res-cat"></span></div>
-            <div style="font-size:13px;margin-bottom:3px;"><strong>🏢 Department:</strong> <span id="va-res-dept"></span></div>
             <div style="font-size:13px;margin-bottom:6px;"><strong>📍 Location:</strong> <span id="va-res-loc"></span></div>
             <div style="font-size:12px;color:#444;background:white;padding:8px 10px;border-radius:8px;border:1px solid #BBDEFB;line-height:1.4;" id="va-res-desc"></div>
           </div>
@@ -175,36 +173,31 @@ export function renderNewComplaint(container) {
   const detailsInput = document.getElementById('nc-details');
   const locationInput = document.getElementById('nc-location');
   const catTag = document.getElementById('nc-category-tag');
-  const deptTag = document.getElementById('nc-dept-tag');
+  const catContainer = document.getElementById('nc-category-container');
   const submitBtn = document.getElementById('nc-submit');
   const attachStatus = document.getElementById('attach-status');
 
-  // Auto-detect category & department using the shared AI engine (matching Android)
-  function updateCategory(overrideCategory, overrideDepartment) {
+  // Auto-detect category using AI logic:
+  // "remove that Estate Maintenance Department i just need category only.Dont give general maintance also in category .just keep category only ,after giving the complaint it should identify and give the category of the compliant."
+  function updateCategory(overrideCategory) {
     const text = `${titleInput.value} ${detailsInput.value}`.trim();
-    if (overrideCategory) {
-      AppState._ncCategory = overrideCategory;
-      AppState._ncDepartment = overrideDepartment || 'Estate Maintenance Department';
+    let cat = '';
+    if (overrideCategory && overrideCategory !== 'General Maintenance') {
+      cat = overrideCategory;
     } else if (text) {
       const aiResult = detectAICategory(text);
-      AppState._ncCategory = aiResult.category;
-      AppState._ncDepartment = aiResult.department;
-    } else {
-      AppState._ncCategory = 'General Maintenance';
-      AppState._ncDepartment = 'Estate Maintenance Department';
+      if (aiResult.category && aiResult.category !== 'General Maintenance') {
+        cat = aiResult.category;
+      }
     }
 
-    const currentCat = AppState._ncCategory || 'General Maintenance';
-    const currentDept = AppState._ncDepartment || 'Estate Maintenance Department';
+    AppState._ncCategory = cat;
 
-    catTag.textContent = `Category: ${currentCat}`;
-    catTag.style.display = 'inline-flex';
-
-    if (currentDept) {
-      deptTag.textContent = currentDept;
-      deptTag.style.display = 'inline-flex';
+    if (cat) {
+      catTag.textContent = `Category: ${cat}`;
+      if (catContainer) catContainer.style.display = 'block';
     } else {
-      deptTag.style.display = 'none';
+      if (catContainer) catContainer.style.display = 'none';
     }
 
     submitBtn.disabled = !(titleInput.value.trim() && locationInput.value.trim());
@@ -225,7 +218,7 @@ export function renderNewComplaint(container) {
     titleInput.value = AppState._voicePrefill.title || '';
     detailsInput.value = AppState._voicePrefill.description || '';
     locationInput.value = AppState._voicePrefill.location || '';
-    updateCategory(AppState._voicePrefill.category, AppState._voicePrefill.department);
+    updateCategory(AppState._voicePrefill.category);
     AppState._voicePrefill = null;
   } else {
     updateCategory();
@@ -276,8 +269,8 @@ export function renderNewComplaint(container) {
     setTimeout(() => {
       currentExtractedData = parseVoiceComplaint(transcript);
       vaResTitle.textContent = currentExtractedData.title;
-      vaResCat.textContent = currentExtractedData.category;
-      vaResDept.textContent = currentExtractedData.department;
+      vaResCat.textContent = currentExtractedData.category || 'General';
+      if (vaResDept) vaResDept.textContent = currentExtractedData.department;
       vaResLoc.textContent = currentExtractedData.location;
       vaResDesc.textContent = currentExtractedData.description;
       vaConfBadge.textContent = `${currentExtractedData.confidence}% Confidence`;
@@ -371,9 +364,9 @@ export function renderNewComplaint(container) {
       titleInput.value = currentExtractedData.title;
       detailsInput.value = currentExtractedData.description;
       locationInput.value = currentExtractedData.location;
-      AppState._ncCategory = currentExtractedData.category;
-      AppState._ncDepartment = currentExtractedData.department;
-      updateCategory(currentExtractedData.category, currentExtractedData.department);
+      const voiceCat = currentExtractedData.category !== 'General Maintenance' ? currentExtractedData.category : '';
+      AppState._ncCategory = voiceCat;
+      updateCategory(voiceCat);
       closeVoiceModal();
 
       // Highlight fields briefly
@@ -541,15 +534,13 @@ export function renderNewComplaint(container) {
   submitBtn.addEventListener('click', () => {
     const text = `${titleInput.value} ${detailsInput.value}`.trim();
     const detected = detectAICategory(text);
-    const category = AppState._ncCategory || detected.category || 'General Maintenance';
-    const department = AppState._ncDepartment || detected.department || 'Estate Maintenance Department';
+    const category = AppState._ncCategory || (detected.category !== 'General Maintenance' ? detected.category : '') || 'General';
 
     AppState.complaintData = {
       title: titleInput.value.trim(),
       details: detailsInput.value.trim(),
       location: locationInput.value.trim(),
       category: category,
-      department: department,
       priority: 'Medium',
       status: 'Pending',
       collegeName: AppState.currentUserData?.collegeName || AppState.collegeName,

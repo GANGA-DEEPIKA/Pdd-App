@@ -34,8 +34,7 @@ export function renderComplaintStatus(container) {
       <!-- Details card -->
       <div class="card" style="margin-bottom:16px;">
         <h3 style="font-size:15px;font-weight:700;color:#1565C0;margin-bottom:16px;">${c.title || 'Complaint'}</h3>
-        ${dRow('Category', c.category || 'General Maintenance')}
-        ${dRow('Department', c.department || 'Estate Maintenance Department')}
+        ${c.category && c.category !== 'General Maintenance' ? dRow('Category', c.category) : (c.category ? dRow('Category', c.category) : '')}
         ${dRow('Location', c.location)}
         ${dRow('Priority', c.priority)}
         ${dRow('College', c.collegeName)}

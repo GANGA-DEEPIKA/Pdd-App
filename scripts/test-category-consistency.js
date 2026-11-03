@@ -77,8 +77,8 @@ const testCases = [
   },
   {
     input: "",
-    expectedCategory: "General Maintenance",
-    expectedDept: "Estate Maintenance Department"
+    expectedCategory: "",
+    expectedDept: ""
   }
 ];
 

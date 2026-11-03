@@ -331,8 +331,9 @@ fun NewComplaintScreen(
                     ) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("📌 Subject: ${res.title}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF1565C0))
-                            Text("🏷️ Category: ${res.category}", fontSize = 12.sp, color = Color(0xFF333333))
-                            Text("🏢 Department: ${res.department}", fontSize = 12.sp, color = Color(0xFF512DA8), fontWeight = FontWeight.Medium)
+                            if (res.category.isNotBlank() && res.category != "General Maintenance") {
+                                Text("🏷️ Category: ${res.category}", fontSize = 12.sp, color = Color(0xFF333333), fontWeight = FontWeight.SemiBold)
+                            }
                             Text("📍 Location: ${res.location}", fontSize = 12.sp, color = Color(0xFF333333))
                         }
                     }
@@ -350,8 +351,7 @@ fun NewComplaintScreen(
                     onClick = {
                         title = res.title
                         details = res.description
-                        category = res.category
-                        department = res.department
+                        category = if (res.category.isNotBlank() && res.category != "General Maintenance") res.category else ""
                         location = res.location
                         showVoiceReviewDialog = false
                         Toast.makeText(context, "Details applied! Review or edit below ✅", Toast.LENGTH_SHORT).show()
@@ -509,38 +509,25 @@ fun NewComplaintScreen(
                         )
                     )
                     
-                    // Update category & department automatically using shared AI logic
+                    // Auto-identify category after giving the complaint
                     LaunchedEffect(title, details) {
                         if (title.isNotEmpty() || details.isNotEmpty()) {
                             val parsed = AIVoiceAssistant.parseVoiceComplaint("$title $details")
-                            category = parsed.category
-                            department = parsed.department
+                            category = if (parsed.category.isNotBlank() && parsed.category != "General Maintenance") parsed.category else ""
                         } else {
-                            category = "General Maintenance"
-                            department = "Estate Maintenance Department"
+                            category = ""
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (category.isNotBlank() && category != "General Maintenance") {
+                        Spacer(modifier = Modifier.height(12.dp))
                         Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(8.dp)) {
                             Text(
-                                text = "Category: ${category.ifEmpty { "General Maintenance" }}",
+                                text = "Category: $category",
                                 color = Color(0xFF1565C0),
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 fontSize = 12.sp
                             )
-                        }
-                        if (department.isNotEmpty()) {
-                            Surface(color = Color(0xFFEDE7F6), shape = RoundedCornerShape(8.dp)) {
-                                Text(
-                                    text = department,
-                                    color = Color(0xFF512DA8),
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    fontSize = 11.sp
-                                )
-                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))

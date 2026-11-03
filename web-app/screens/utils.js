@@ -37,8 +37,8 @@ export function getComplaintBorderClass(status = '') {
 }
 
 export function suggestCategory(text) {
-  if (!text || !text.trim()) return 'General Maintenance';
-  return detectAICategory(text).category;
+  if (!text || !text.trim()) return '';
+  return detectAICategory(text).category || '';
 }
 
 export function fileToBase64(file) {

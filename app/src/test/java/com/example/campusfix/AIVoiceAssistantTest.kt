@@ -67,8 +67,8 @@ class AIVoiceAssistantTest {
     @Test
     fun testBlankVoiceInputFallback() {
         val result = AIVoiceAssistant.parseVoiceComplaint("")
-        assertEquals("General Maintenance", result.category)
-        assertEquals("Estate Maintenance Department", result.department)
+        assertEquals("", result.category)
+        assertEquals("", result.department)
         assertEquals("Campus Premises", result.location)
     }
 

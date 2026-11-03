@@ -70,10 +70,10 @@ object AIVoiceAssistant {
         if (speech.isNullOrBlank()) {
             return ParsedComplaintVoice(
                 rawSpeech = "",
-                title = "General Maintenance Issue",
+                title = "Maintenance Issue",
                 description = "",
-                category = "General Maintenance",
-                department = "Estate Maintenance Department",
+                category = "",
+                department = "",
                 location = "Campus Premises",
                 confidence = 50
             )
@@ -83,8 +83,8 @@ object AIVoiceAssistant {
         val lower = raw.lowercase()
 
         // 1. Category & Department detection
-        var category = "General Maintenance"
-        var department = "Estate Maintenance Department"
+        var category = ""
+        var department = ""
         var bestCatScore = 0
 
         for (rule in CATEGORY_RULES) {

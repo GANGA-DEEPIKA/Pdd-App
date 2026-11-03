@@ -5,10 +5,10 @@ export function parseVoiceComplaint(speech) {
   if (!speech || !speech.trim()) {
     return {
       rawSpeech: '',
-      title: 'General Maintenance Issue',
+      title: 'Maintenance Issue',
       description: '',
-      category: 'General Maintenance',
-      department: 'Estate Maintenance Department',
+      category: '',
+      department: '',
       location: 'Campus Premises',
       confidence: 50
     };
@@ -18,8 +18,8 @@ export function parseVoiceComplaint(speech) {
   const lower = raw.toLowerCase();
 
   // 1. Category & Department detection
-  let category = 'General Maintenance';
-  let department = 'Estate Maintenance Department';
+  let category = '';
+  let department = '';
 
   const categoryRules = [
     {
@@ -163,10 +163,20 @@ export function capitalizeWords(str) {
  * Matches the Android AIVoiceAssistant NLP engine.
  */
 export function detectAICategory(text) {
+  if (!text || !text.trim()) {
+    return {
+      category: '',
+      department: '',
+      hasDetectedCategory: false,
+      confidence: 0
+    };
+  }
   const parsed = parseVoiceComplaint(text);
+  const hasCategory = Boolean(parsed.category && parsed.category !== 'General Maintenance');
   return {
-    category: parsed.category,
+    category: hasCategory ? parsed.category : '',
     department: parsed.department,
+    hasDetectedCategory: hasCategory,
     confidence: parsed.confidence
   };
 }

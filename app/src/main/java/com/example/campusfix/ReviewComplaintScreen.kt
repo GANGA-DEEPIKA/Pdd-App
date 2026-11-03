@@ -141,9 +141,8 @@ fun ReviewComplaintScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ReviewRowItem("Subject", complaint.title)
-                    ReviewRowItem("Category", complaint.category)
-                    if (complaint.department.isNotBlank()) {
-                        ReviewRowItem("Department", complaint.department)
+                    if (complaint.category.isNotBlank() && complaint.category != "General Maintenance") {
+                        ReviewRowItem("Category", complaint.category)
                     }
                     ReviewRowItem("Location", complaint.location)
                     ReviewRowItem("Priority", if (complaint.priority.isNotBlank()) complaint.priority else "Medium")
