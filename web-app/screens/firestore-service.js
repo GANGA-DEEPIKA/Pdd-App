@@ -4,7 +4,7 @@ import { findBestDuplicateMatch } from './ai-duplicate-engine.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   addDoc, query, where, orderBy, serverTimestamp, runTransaction,
-  increment
+  increment, writeBatch
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 export function getCollegeId(college) {
@@ -134,12 +134,105 @@ export async function updateComplaintStatus(ticketId, newStatus) {
   const docRef = doc(db, 'all_complaints', ticketId);
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(docRef);
-    const staffId = snap.data()?.assignedStaffId || '';
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const staffId = data?.assignedStaffId || '';
     tx.update(docRef, { status: newStatus });
-    if (newStatus === 'Resolved' && snap.data()?.status !== 'Resolved' && staffId) {
+    if (newStatus === 'Resolved' && data?.status !== 'Resolved' && staffId) {
       tx.update(doc(db, 'approvedStaff', staffId), { activeComplaintCount: increment(-1) });
     }
+
+    // Cascade status update to all linked/grouped complaints
+    const linkedIds = Array.isArray(data?.linkedTicketIds) ? data.linkedTicketIds : [];
+    for (const linkedId of linkedIds) {
+      const linkedRef = doc(db, 'all_complaints', linkedId);
+      tx.update(linkedRef, { status: newStatus });
+    }
   });
+}
+
+/**
+ * Confirms an AI-detected duplicate group in Firestore
+ */
+export async function confirmDuplicateGroup(mainTicketId, linkedTicketIds, matchReason = '') {
+  if (!mainTicketId || !linkedTicketIds || !linkedTicketIds.length) return;
+  const batch = writeBatch(db);
+
+  const mainRef = doc(db, 'all_complaints', mainTicketId);
+  batch.update(mainRef, {
+    isGroupMaster: true,
+    linkedTicketIds: linkedTicketIds,
+    affectedStudentsCount: linkedTicketIds.length + 1,
+    duplicateConfirmed: true,
+    duplicateMatchReason: matchReason || 'Confirmed duplicate group by staff'
+  });
+
+  for (const linkedId of linkedTicketIds) {
+    const linkedRef = doc(db, 'all_complaints', linkedId);
+    batch.update(linkedRef, {
+      parentTicketId: mainTicketId,
+      isDuplicate: true,
+      duplicateConfirmed: true
+    });
+  }
+
+  await batch.commit();
+}
+
+/**
+ * Separates a single linked complaint from a group
+ */
+export async function separateDuplicateComplaint(mainTicketId, linkedTicketId) {
+  if (!mainTicketId || !linkedTicketId) return;
+  const mainRef = doc(db, 'all_complaints', mainTicketId);
+  const linkedRef = doc(db, 'all_complaints', linkedTicketId);
+
+  await runTransaction(db, async (tx) => {
+    const mainSnap = await tx.get(mainRef);
+    if (mainSnap.exists()) {
+      const currentLinked = Array.isArray(mainSnap.data().linkedTicketIds)
+        ? mainSnap.data().linkedTicketIds.filter(id => id !== linkedTicketId)
+        : [];
+      tx.update(mainRef, {
+        linkedTicketIds: currentLinked,
+        affectedStudentsCount: currentLinked.length + 1,
+        isGroupMaster: currentLinked.length > 0,
+        duplicateConfirmed: currentLinked.length > 0
+      });
+    }
+    tx.update(linkedRef, {
+      parentTicketId: '',
+      isDuplicate: false,
+      duplicateConfirmed: false
+    });
+  });
+}
+
+/**
+ * Separates all complaints in a group back to individual standalone complaints
+ */
+export async function separateAllInGroup(mainTicketId, linkedTicketIds) {
+  if (!mainTicketId) return;
+  const batch = writeBatch(db);
+  const mainRef = doc(db, 'all_complaints', mainTicketId);
+  batch.update(mainRef, {
+    isGroupMaster: false,
+    linkedTicketIds: [],
+    affectedStudentsCount: 1,
+    duplicateConfirmed: false
+  });
+
+  const ids = Array.isArray(linkedTicketIds) ? linkedTicketIds : [];
+  for (const id of ids) {
+    const linkedRef = doc(db, 'all_complaints', id);
+    batch.update(linkedRef, {
+      parentTicketId: '',
+      isDuplicate: false,
+      duplicateConfirmed: false
+    });
+  }
+
+  await batch.commit();
 }
 
 export async function uploadStaffProof(ticketId, photoFile) {

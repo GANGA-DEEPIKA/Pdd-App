@@ -26,6 +26,14 @@ data class ComplaintData(
     var proofPhotoUrl: String = "",
     var proofVideoUrl: String = "",
     
+    // AI Duplicate Grouping fields
+    var isGroupMaster: Boolean = false,
+    var linkedTicketIds: List<String> = emptyList(),
+    var parentTicketId: String = "",
+    var affectedStudentsCount: Int = 1,
+    var duplicateConfirmed: Boolean = false,
+    var duplicateMatchReason: String = "",
+    
     // UI Helpers (Transient)
     val photoUri: String = "",
     val videoUri: String = "",

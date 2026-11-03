@@ -226,7 +226,92 @@ object FirestoreService {
                 if (newStatus == "Resolved" && snapshot.getString("status") != "Resolved" && staffId.isNotEmpty()) {
                     transaction.update(db.collection("approvedStaff").document(staffId), "activeComplaintCount", FieldValue.increment(-1))
                 }
+
+                // Cascade status update to all linked complaints in this group
+                val linkedIds = (snapshot.get("linkedTicketIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                for (linkedId in linkedIds) {
+                    val linkedRef = db.collection("all_complaints").document(linkedId)
+                    transaction.update(linkedRef, "status", newStatus)
+                }
             }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun confirmDuplicateGroup(mainTicketId: String, linkedTicketIds: List<String>, matchReason: String = ""): Result<Unit> {
+        return try {
+            val batch = db.batch()
+            val mainRef = db.collection("all_complaints").document(mainTicketId)
+            batch.update(mainRef, mapOf(
+                "isGroupMaster" to true,
+                "linkedTicketIds" to linkedTicketIds,
+                "affectedStudentsCount" to (linkedTicketIds.size + 1),
+                "duplicateConfirmed" to true,
+                "duplicateMatchReason" to matchReason.ifEmpty { "Confirmed duplicate group by staff" }
+            ))
+
+            for (linkedId in linkedTicketIds) {
+                val linkedRef = db.collection("all_complaints").document(linkedId)
+                batch.update(linkedRef, mapOf(
+                    "parentTicketId" to mainTicketId,
+                    "isDuplicate" to true,
+                    "duplicateConfirmed" to true
+                ))
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun separateDuplicateComplaint(mainTicketId: String, linkedTicketId: String): Result<Unit> {
+        return try {
+            val mainRef = db.collection("all_complaints").document(mainTicketId)
+            val linkedRef = db.collection("all_complaints").document(linkedTicketId)
+            db.runTransaction { transaction ->
+                val mainSnap = transaction.get(mainRef)
+                val currentLinked = (mainSnap.get("linkedTicketIds") as? List<*>)?.filterIsInstance<String>()?.filter { it != linkedTicketId } ?: emptyList()
+                transaction.update(mainRef, mapOf(
+                    "linkedTicketIds" to currentLinked,
+                    "affectedStudentsCount" to (currentLinked.size + 1),
+                    "isGroupMaster" to currentLinked.isNotEmpty(),
+                    "duplicateConfirmed" to currentLinked.isNotEmpty()
+                ))
+                transaction.update(linkedRef, mapOf(
+                    "parentTicketId" to "",
+                    "isDuplicate" to false,
+                    "duplicateConfirmed" to false
+                ))
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun separateAllInGroup(mainTicketId: String, linkedTicketIds: List<String>): Result<Unit> {
+        return try {
+            val batch = db.batch()
+            val mainRef = db.collection("all_complaints").document(mainTicketId)
+            batch.update(mainRef, mapOf(
+                "isGroupMaster" to false,
+                "linkedTicketIds" to emptyList<String>(),
+                "affectedStudentsCount" to 1,
+                "duplicateConfirmed" to false
+            ))
+
+            for (linkedId in linkedTicketIds) {
+                val linkedRef = db.collection("all_complaints").document(linkedId)
+                batch.update(linkedRef, mapOf(
+                    "parentTicketId" to "",
+                    "isDuplicate" to false,
+                    "duplicateConfirmed" to false
+                ))
+            }
+            batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

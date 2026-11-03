@@ -222,7 +222,8 @@ fun CampusFixApp() {
             onResolutionNotesClick = { navigateTo("resolutionNotes") },
             onUploadProofClick = { navigateTo("uploadProof") },
             onEscalateClick = { navigateTo("escalateComplaint") },
-            onPerformanceClick = { navigateTo("performanceSummary") }
+            onPerformanceClick = { navigateTo("performanceSummary") },
+            onDuplicateGroupsClick = { navigateTo("duplicateGroups") }
         )
 
         "adminDashboard" -> AdminDashboardScreen(
@@ -348,6 +349,11 @@ fun CampusFixApp() {
                 complaintData = complaint
                 navigateTo("updateStatus")
             },
+            onBackClick = { goBack() }
+        )
+
+        "duplicateGroups" -> DuplicateGroupsScreen(
+            complaintList = complaintList,
             onBackClick = { goBack() }
         )
 

@@ -25,6 +25,7 @@ fun StaffDashboardScreen(
     onUploadProofClick: () -> Unit,
     onEscalateClick: () -> Unit,
     onPerformanceClick: () -> Unit,
+    onDuplicateGroupsClick: () -> Unit = {},
     complaintList: List<ComplaintData>,
     staffInfo: StaffData = StaffData(
         name = "Robert Wilson",
@@ -111,6 +112,53 @@ fun StaffDashboardScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            val duplicateGroups = androidx.compose.runtime.remember(complaintList) {
+                AIDuplicateEngine.groupComplaintsWithAI(complaintList)
+            }
+            val totalAffected = duplicateGroups.sumOf { it.totalStudentsAffected }
+
+            if (duplicateGroups.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDuplicateGroupsClick() },
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF1565C0),
+                    shadowElevation = 3.dp
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Surface(modifier = Modifier.size(40.dp), shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = 0.2f)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("👥", fontSize = 20.sp)
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "${duplicateGroups.size} Duplicate Groups Detected",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "$totalAffected students affected • Grouped by AI",
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                )
+                            }
+                        }
+                        Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
+                            Text("Review ›", color = Color(0xFF1565C0), fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
             Text(
                 text = "Actions",
                 fontSize = 18.sp,
@@ -120,6 +168,7 @@ fun StaffDashboardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            StaffActionCard("Duplicate Groups", "${duplicateGroups.size} groups • $totalAffected students affected", "👥", onDuplicateGroupsClick)
             StaffActionCard("Assigned Complaints", "View and process task list", "📂", onAssignedClick)
             StaffActionCard("Update Status", "Change ticket progress state", "🔄", onUpdateStatusClick)
             StaffActionCard("Resolution Notes", "Add details about the fix", "✍️", onResolutionNotesClick)

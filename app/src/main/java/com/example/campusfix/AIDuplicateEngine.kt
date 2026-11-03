@@ -14,6 +14,19 @@ data class DuplicateCheckResult(
     val descriptionScore: Double = 0.0
 )
 
+data class DuplicateGroup(
+    val groupId: String = "",
+    val mainComplaint: ComplaintData = ComplaintData(),
+    val linkedComplaints: List<ComplaintData> = emptyList(),
+    val confidence: Int = 0,
+    val matchReason: String = "",
+    val isConfirmed: Boolean = false,
+    val totalStudentsAffected: Int = 1
+) {
+    val allComplaints: List<ComplaintData>
+        get() = listOf(mainComplaint) + linkedComplaints
+}
+
 object AIDuplicateEngine {
 
     private val STOP_WORDS = setOf(
@@ -255,6 +268,150 @@ object AIDuplicateEngine {
                 matchReason = ""
             )
         }
+    }
+
+    /**
+     * AI-Powered Duplicate Grouping Engine for Staff Dashboard
+     * Identifies clusters of similar complaints based on title, description, category, and location,
+     * and groups duplicates under a single main complaint.
+     */
+    fun groupComplaintsWithAI(complaintList: List<ComplaintData>): List<DuplicateGroup> {
+        if (complaintList.isEmpty()) return emptyList()
+
+        val activeComplaints = complaintList.filter { !it.status.contains("rejected", ignoreCase = true) }
+        val complaintMap = activeComplaints.associateBy { it.ticketId }
+        val processed = mutableSetOf<String>()
+        val groups = mutableListOf<DuplicateGroup>()
+
+        // 1. Pre-confirmed or persisted groups from Firestore
+        for (c in activeComplaints) {
+            if (c.ticketId in processed) continue
+
+            val isMaster = c.isGroupMaster || c.linkedTicketIds.isNotEmpty()
+            if (isMaster) {
+                processed.add(c.ticketId)
+                val linked = mutableListOf<ComplaintData>()
+                for (id in c.linkedTicketIds) {
+                    complaintMap[id]?.let {
+                        linked.add(it)
+                        processed.add(id)
+                    }
+                }
+                for (other in activeComplaints) {
+                    if (other.ticketId !in processed && other.parentTicketId == c.ticketId) {
+                        linked.add(other)
+                        processed.add(other.ticketId)
+                    }
+                }
+
+                if (linked.isNotEmpty()) {
+                    val studentIdentifiers = mutableSetOf<String>()
+                    if (c.studentEmail.isNotEmpty()) studentIdentifiers.add(c.studentEmail.lowercase())
+                    else if (c.studentUid.isNotEmpty()) studentIdentifiers.add(c.studentUid)
+                    for (l in linked) {
+                        if (l.studentEmail.isNotEmpty()) studentIdentifiers.add(l.studentEmail.lowercase())
+                        else if (l.studentUid.isNotEmpty()) studentIdentifiers.add(l.studentUid)
+                    }
+                    val totalAffected = maxOf(studentIdentifiers.size, 1 + linked.size)
+                    groups.add(
+                        DuplicateGroup(
+                            groupId = c.ticketId,
+                            mainComplaint = c,
+                            linkedComplaints = linked,
+                            confidence = 95,
+                            matchReason = c.duplicateMatchReason.ifEmpty { "Confirmed duplicate group by staff" },
+                            isConfirmed = true,
+                            totalStudentsAffected = totalAffected
+                        )
+                    )
+                }
+            }
+        }
+
+        // 2. Pairwise AI clustering for remaining unlinked complaints
+        val remaining = activeComplaints.filter { it.ticketId !in processed && it.parentTicketId.isEmpty() }
+        val adj = mutableMapOf<String, MutableList<Pair<ComplaintData, DuplicateCheckResult>>>()
+        for (c in remaining) {
+            adj[c.ticketId] = mutableListOf()
+        }
+
+        for (i in remaining.indices) {
+            for (j in i + 1 until remaining.size) {
+                val c1 = remaining[i]
+                val c2 = remaining[j]
+                val eval = evaluate(c1, c2)
+                if (eval.isDuplicate) {
+                    adj[c1.ticketId]?.add(Pair(c2, eval))
+                    adj[c2.ticketId]?.add(Pair(c1, eval))
+                }
+            }
+        }
+
+        val visitedInClustering = mutableSetOf<String>()
+        for (c in remaining) {
+            if (c.ticketId in visitedInClustering) continue
+
+            val cluster = mutableListOf<ComplaintData>()
+            val queue = ArrayDeque<ComplaintData>()
+            queue.add(c)
+            visitedInClustering.add(c.ticketId)
+
+            var maxConfidence = 0
+            var bestReason = ""
+
+            while (queue.isNotEmpty()) {
+                val curr = queue.removeFirst()
+                cluster.add(curr)
+
+                val neighbors = adj[curr.ticketId] ?: emptyList()
+                for ((target, evalResult) in neighbors) {
+                    if (evalResult.confidence > maxConfidence) {
+                        maxConfidence = evalResult.confidence
+                        bestReason = evalResult.matchReason
+                    }
+                    if (target.ticketId !in visitedInClustering) {
+                        visitedInClustering.add(target.ticketId)
+                        queue.add(target)
+                    }
+                }
+            }
+
+            if (cluster.size >= 2) {
+                val sortedCluster = cluster.sortedWith(
+                    compareByDescending<ComplaintData> {
+                        when (it.status) {
+                            "In Progress" -> 3
+                            "Assigned" -> 2
+                            else -> 1
+                        }
+                    }.thenBy { it.ticketId }
+                )
+
+                val mainComplaint = sortedCluster.first()
+                val linkedComplaints = sortedCluster.drop(1)
+
+                val studentIdentifiers = mutableSetOf<String>()
+                for (comp in sortedCluster) {
+                    if (comp.studentEmail.isNotEmpty()) studentIdentifiers.add(comp.studentEmail.lowercase())
+                    else if (comp.studentUid.isNotEmpty()) studentIdentifiers.add(comp.studentUid)
+                }
+                val totalAffected = maxOf(studentIdentifiers.size, sortedCluster.size)
+
+                groups.add(
+                    DuplicateGroup(
+                        groupId = mainComplaint.ticketId,
+                        mainComplaint = mainComplaint,
+                        linkedComplaints = linkedComplaints,
+                        confidence = if (maxConfidence > 0) maxConfidence else 75,
+                        matchReason = bestReason.ifEmpty { "AI identified high similarity in title, description, category, and location." },
+                        isConfirmed = false,
+                        totalStudentsAffected = totalAffected
+                    )
+                )
+            }
+        }
+
+        return groups.sortedByDescending { it.totalStudentsAffected }
     }
 }
 

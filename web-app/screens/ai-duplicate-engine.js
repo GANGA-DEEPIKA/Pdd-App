@@ -255,3 +255,151 @@ export function findBestDuplicateMatch(newComplaint, existingComplaintsList) {
   };
 }
 
+/**
+ * AI-Powered Duplicate Grouping Engine for Staff Dashboard
+ * Identifies clusters of similar complaints based on title, description, category, and location,
+ * and groups duplicates under a single main complaint.
+ */
+export function groupComplaintsWithAI(complaintList) {
+  if (!complaintList || !complaintList.length) return [];
+
+  const activeComplaints = complaintList.filter(c => {
+    const st = (c.status || '').toLowerCase();
+    return !st.includes('rejected');
+  });
+
+  const complaintMap = new Map();
+  activeComplaints.forEach(c => complaintMap.set(c.ticketId, c));
+
+  const processed = new Set();
+  const groups = [];
+
+  // 1. Process pre-confirmed or persisted groups from Firestore
+  for (const c of activeComplaints) {
+    if (processed.has(c.ticketId)) continue;
+
+    const isMaster = Boolean(c.isGroupMaster || (Array.isArray(c.linkedTicketIds) && c.linkedTicketIds.length > 0));
+    if (isMaster) {
+      processed.add(c.ticketId);
+      const linked = [];
+      const linkedIds = Array.isArray(c.linkedTicketIds) ? c.linkedTicketIds : [];
+
+      linkedIds.forEach(id => {
+        const linkedC = complaintMap.get(id);
+        if (linkedC) {
+          linked.push(linkedC);
+          processed.add(id);
+        }
+      });
+
+      activeComplaints.forEach(other => {
+        if (!processed.has(other.ticketId) && other.parentTicketId === c.ticketId) {
+          linked.push(other);
+          processed.add(other.ticketId);
+        }
+      });
+
+      if (linked.length > 0) {
+        const studentIdentifiers = new Set();
+        if (c.studentEmail) studentIdentifiers.add(c.studentEmail.toLowerCase());
+        else if (c.studentUid) studentIdentifiers.add(c.studentUid);
+
+        linked.forEach(l => {
+          if (l.studentEmail) studentIdentifiers.add(l.studentEmail.toLowerCase());
+          else if (l.studentUid) studentIdentifiers.add(l.studentUid);
+        });
+
+        const totalStudentsAffected = Math.max(studentIdentifiers.size, 1 + linked.length);
+
+        groups.push({
+          groupId: c.ticketId,
+          mainComplaint: c,
+          linkedComplaints: linked,
+          confidence: c.duplicateConfidence || 95,
+          matchReason: c.duplicateMatchReason || 'Confirmed duplicate group by staff',
+          isConfirmed: true,
+          totalStudentsAffected
+        });
+      }
+    }
+  }
+
+  // 2. For remaining unlinked complaints, perform AI pairwise similarity clustering
+  const remaining = activeComplaints.filter(c => !processed.has(c.ticketId) && !c.parentTicketId);
+
+  const adj = new Map();
+  remaining.forEach(c => adj.set(c.ticketId, []));
+
+  for (let i = 0; i < remaining.length; i++) {
+    for (let j = i + 1; j < remaining.length; j++) {
+      const c1 = remaining[i];
+      const c2 = remaining[j];
+      const evalResult = evaluateComplaintAgainstExisting(c1, c2);
+      if (evalResult.isDuplicate) {
+        adj.get(c1.ticketId).push({ target: c2, result: evalResult });
+        adj.get(c2.ticketId).push({ target: c1, result: evalResult });
+      }
+    }
+  }
+
+  const visitedInClustering = new Set();
+  for (const c of remaining) {
+    if (visitedInClustering.has(c.ticketId)) continue;
+
+    const cluster = [];
+    const queue = [c];
+    visitedInClustering.add(c.ticketId);
+
+    let maxConfidence = 0;
+    let bestReason = '';
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      cluster.push(curr);
+
+      const neighbors = adj.get(curr.ticketId) || [];
+      for (const edge of neighbors) {
+        if (edge.result.confidence > maxConfidence) {
+          maxConfidence = edge.result.confidence;
+          bestReason = edge.result.reason;
+        }
+        if (!visitedInClustering.has(edge.target.ticketId)) {
+          visitedInClustering.add(edge.target.ticketId);
+          queue.push(edge.target);
+        }
+      }
+    }
+
+    if (cluster.length >= 2) {
+      cluster.sort((a, b) => {
+        const rank = (s) => (s === 'In Progress' ? 3 : s === 'Assigned' ? 2 : 1);
+        const rankDiff = rank(b.status) - rank(a.status);
+        if (rankDiff !== 0) return rankDiff;
+        return (a.ticketId || '').localeCompare(b.ticketId || '');
+      });
+
+      const mainComplaint = cluster[0];
+      const linkedComplaints = cluster.slice(1);
+
+      const studentIdentifiers = new Set();
+      cluster.forEach(comp => {
+        if (comp.studentEmail) studentIdentifiers.add(comp.studentEmail.toLowerCase());
+        else if (comp.studentUid) studentIdentifiers.add(comp.studentUid);
+      });
+      const totalStudentsAffected = Math.max(studentIdentifiers.size, cluster.length);
+
+      groups.push({
+        groupId: mainComplaint.ticketId,
+        mainComplaint,
+        linkedComplaints,
+        confidence: maxConfidence || 75,
+        matchReason: bestReason || 'AI identified high similarity in title, description, category, and location.',
+        isConfirmed: false,
+        totalStudentsAffected
+      });
+    }
+  }
+
+  return groups.sort((a, b) => b.totalStudentsAffected - a.totalStudentsAffected);
+}
+

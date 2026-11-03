@@ -36,6 +36,7 @@ import { renderEditProfile } from './screens/edit-profile.js';
 import { renderResolutionNotes } from './screens/resolution-notes.js';
 import { renderEscalateComplaint } from './screens/escalate-complaint.js';
 import { renderGlobalSettings } from './screens/global-settings.js';
+import { renderDuplicateGroups } from './screens/duplicate-groups.js?v=20261103_04';
 import { getUserData, getCollegeId } from './screens/firestore-service.js';
 import { showToast } from './screens/utils.js';
 
@@ -160,7 +161,7 @@ export function subscribeToComplaints(userData) {
 
       // Re-render dashboards if currently on one
       const dashScreens = ['studentDashboard', 'staffDashboard', 'adminDashboard',
-        'complaintHistory', 'assignedComplaints', 'performanceSummary'];
+        'complaintHistory', 'assignedComplaints', 'performanceSummary', 'duplicateGroups'];
       if (dashScreens.includes(AppState.screen)) renderCurrentScreen();
     };
 
@@ -290,6 +291,8 @@ export function renderCurrentScreen() {
     renderEscalateComplaint(app);
   } else if (s === 'globalSettings') {
     renderGlobalSettings(app);
+  } else if (s === 'duplicateGroups') {
+    renderDuplicateGroups(app);
   } else {
     renderCollegeSelection(app);
   }
