@@ -31,7 +31,7 @@ export function renderComplaintHistory(container) {
         <div class="complaint-item-header">
           <div>
             <div class="complaint-title">${c.title || 'Untitled'}</div>
-            <div class="complaint-category">${c.category || ''}</div>
+            <div class="complaint-category" style="font-weight:700;color:#1565C0;font-size:12px;">🏷️ ${c.category || 'General Maintenance'}</div>
           </div>
           <span class="badge ${getStatusBadgeClass(c.status)}">${c.status || 'Pending'}</span>
         </div>

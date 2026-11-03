@@ -33,7 +33,9 @@ export function renderStaffDashboard(container) {
         <div>
           <h1 style="color:white;font-size:22px;font-weight:800;">${u?.name || 'Staff'}</h1>
           <p style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:2px;">${u?.department || 'Department'} • ${u?.collegeName || AppState.collegeName}</p>
-          <p style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:2px;">${(u?.assignedCategories || []).join(', ') || 'No categories assigned'}</p>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.22);padding:4px 10px;border-radius:12px;margin-top:6px;font-size:12px;font-weight:700;color:white;">
+            🏷️ ${(u?.assignedCategories && u.assignedCategories.length > 0) ? u.assignedCategories.join(', ') + ' Staff' : (u?.department || 'General Maintenance Staff')}
+          </div>
         </div>
       </div>
       <!-- Stats -->
@@ -52,7 +54,7 @@ export function renderStaffDashboard(container) {
         </div>
       </div>
     </div>
-    <!-- Actions -->
+    <!-- Actions & Assigned Complaints -->
     <div style="padding:20px;overflow-y:auto;flex:1;padding-bottom:40px;">
       <h2 style="font-size:17px;font-weight:700;margin-bottom:16px;color:#333;">Quick Actions</h2>
       ${actions.map(a => `
@@ -64,6 +66,33 @@ export function renderStaffDashboard(container) {
         </div>
         <span style="margin-left:auto;color:#BDBDBD;font-size:18px;">›</span>
       </div>`).join('')}
+
+      <!-- Assigned Tasks with AI Category Tags -->
+      <div style="margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h2 style="font-size:17px;font-weight:700;color:#333;">Assigned Tasks (${list.length})</h2>
+          <span style="font-size:13px;font-weight:700;color:#1565C0;cursor:pointer;" id="sd-view-all">View All ›</span>
+        </div>
+        ${list.length === 0 ? `
+          <div style="background:white;border-radius:14px;padding:24px;text-align:center;color:#9E9E9E;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+            <div style="font-size:28px;margin-bottom:6px;">📋</div>
+            <div style="font-size:14px;font-weight:600;">No complaints currently assigned</div>
+            <div style="font-size:12px;color:#BDBDBD;margin-top:2px;">New complaints matching your categories will appear here automatically.</div>
+          </div>
+        ` : list.slice(0, 5).map(c => `
+          <div class="card sd-task-card" style="margin-bottom:12px;padding:16px;cursor:pointer;border-left:4px solid #1565C0;transition:transform 0.15s;" data-ticket="${c.ticketId}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="background:#E3F2FD;color:#1565C0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px;">${c.ticketId}</span>
+              <span class="badge ${c.status === 'Resolved' ? 'badge-resolved' : c.status === 'In Progress' ? 'badge-progress' : 'badge-assigned'}" style="font-size:11px;">${c.status || 'Assigned'}</span>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:6px;">${c.title || 'Untitled'}</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#555;flex-wrap:wrap;">
+              <span style="background:#E3F2FD;color:#1565C0;padding:3px 10px;border-radius:8px;font-weight:700;font-size:12px;">🏷️ ${c.category || 'General Maintenance'}</span>
+              <span>📍 ${c.location || 'Campus'}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   </div>`;
 
@@ -76,6 +105,22 @@ export function renderStaffDashboard(container) {
     document.getElementById(`staff-action-${a.screen}`)?.addEventListener('click', () => {
       AppState.filterType = 'all';
       navigateTo(a.screen);
+    });
+  });
+
+  document.getElementById('sd-view-all')?.addEventListener('click', () => {
+    AppState.filterType = 'all';
+    navigateTo('assignedComplaints');
+  });
+
+  document.querySelectorAll('.sd-task-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const ticket = card.dataset.ticket;
+      const complaint = list.find(c => c.ticketId === ticket);
+      if (complaint) {
+        AppState.complaintData = complaint;
+        navigateTo('updateStatus');
+      }
     });
   });
 

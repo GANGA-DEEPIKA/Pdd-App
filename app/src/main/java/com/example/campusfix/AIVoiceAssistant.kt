@@ -22,12 +22,12 @@ object AIVoiceAssistant {
         CategoryRule(
             cat = "Electrical",
             dept = "Electrical Maintenance Department",
-            keywords = listOf("fan", "fans", "light", "lights", "bulb", "bulbs", "tube", "tubelight", "current", "power", "switch", "socket", "plug", "wiring", "wire", "spark", "ac", "aircon", "air conditioner", "cooling", "voltage", "mcb", "trip", "street light", "fuse", "geyser", "heater")
+            keywords = listOf("fan", "fans", "light", "lights", "bulb", "bulbs", "tube", "tubelight", "current", "power", "switch", "socket", "plug", "wiring", "wire", "spark", "ac", "aircon", "air conditioner", "cooling", "voltage", "mcb", "trip", "street light", "fuse", "geyser", "heater", "electrical")
         ),
         CategoryRule(
             cat = "Plumbing",
             dept = "Plumbing & Water Supply Department",
-            keywords = listOf("water", "tap", "taps", "faucet", "leak", "leaking", "leakage", "pipe", "pipeline", "dripping", "flush", "drain", "drainage", "sink", "washbasin", "sewage", "restroom", "washroom", "toilet", "tank", "motor", "drinking water", "purifier", "cooler")
+            keywords = listOf("water", "tap", "taps", "faucet", "leak", "leaking", "leakage", "pipe", "pipeline", "dripping", "flush", "drain", "drainage", "sink", "washbasin", "sewage", "restroom", "washroom", "toilet", "tank", "motor", "drinking water", "purifier", "cooler", "plumbing")
         ),
         CategoryRule(
             cat = "Network/WiFi",
@@ -37,7 +37,7 @@ object AIVoiceAssistant {
         CategoryRule(
             cat = "Cleanliness",
             dept = "Housekeeping & Campus Sanitation",
-            keywords = listOf("dirty", "dust", "dustbin", "trash", "garbage", "waste", "cleaning", "sweep", "sweeping", "broom", "smell", "stink", "stinking", "spill", "stain", "sanitation", "unhygienic", "litter", "overflowing", "corridor dirty")
+            keywords = listOf("dirty", "dust", "dustbin", "trash", "garbage", "waste", "cleaning", "sweep", "sweeping", "broom", "smell", "stink", "stinking", "spill", "stain", "sanitation", "unhygienic", "litter", "overflowing", "corridor dirty", "clean")
         ),
         CategoryRule(
             cat = "Furniture",
@@ -57,7 +57,7 @@ object AIVoiceAssistant {
         CategoryRule(
             cat = "Security",
             dept = "Campus Security & Safety Division",
-            keywords = listOf("security", "gate", "guard", "theft", "lost", "stolen", "cctv", "camera", "id card", "trespass", "safety", "lock", "padlock", "key", "stranger")
+            keywords = listOf("security", "gate", "guard", "theft", "lost", "stolen", "cctv", "camera", "id card", "trespass", "safety", "lock", "padlock", "key", "stranger", "safe")
         ),
         CategoryRule(
             cat = "Transport",
@@ -177,9 +177,18 @@ object AIVoiceAssistant {
         )
     }
 
+    fun detectCategory(text: String?): String {
+        return parseVoiceComplaint(text).category
+    }
+
+    fun detectDepartment(text: String?): String {
+        return parseVoiceComplaint(text).department
+    }
+
     private fun capitalizeWords(str: String): String {
         return str.split(" ").joinToString(" ") { word ->
             word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         }
     }
 }
+

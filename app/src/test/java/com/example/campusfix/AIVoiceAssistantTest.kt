@@ -71,4 +71,26 @@ class AIVoiceAssistantTest {
         assertEquals("Estate Maintenance Department", result.department)
         assertEquals("Campus Premises", result.location)
     }
+
+    @Test
+    fun testCategoryDetectionConsistency() {
+        assertEquals("Electrical", AIVoiceAssistant.detectCategory("AC cooling is completely down in CS block room 102"))
+        assertEquals("Electrical Maintenance Department", AIVoiceAssistant.detectDepartment("AC cooling is completely down in CS block room 102"))
+
+        assertEquals("Plumbing", AIVoiceAssistant.detectCategory("Pipeline leakage near ground floor drinking water cooler"))
+        assertEquals("Plumbing & Water Supply Department", AIVoiceAssistant.detectDepartment("Pipeline leakage near ground floor drinking water cooler"))
+
+        assertEquals("Security", AIVoiceAssistant.detectCategory("CCTV camera at main gate is not working"))
+        assertEquals("Campus Security & Safety Division", AIVoiceAssistant.detectDepartment("CCTV camera at main gate is not working"))
+
+        assertEquals("Transport", AIVoiceAssistant.detectCategory("Campus bus 14 route timing is delayed"))
+        assertEquals("Transport & Fleet Operations", AIVoiceAssistant.detectDepartment("Campus bus 14 route timing is delayed"))
+
+        assertEquals("Furniture", AIVoiceAssistant.detectCategory("Wooden chair and study desk broken in seminar room"))
+        assertEquals("Carpentry & Infrastructure Maintenance", AIVoiceAssistant.detectDepartment("Wooden chair and study desk broken in seminar room"))
+
+        assertEquals("Hostel", AIVoiceAssistant.detectCategory("Hostel room cot and mattress need replacement"))
+        assertEquals("Hostel Administration & Estate Office", AIVoiceAssistant.detectDepartment("Hostel room cot and mattress need replacement"))
+    }
 }
+

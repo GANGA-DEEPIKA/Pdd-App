@@ -87,7 +87,9 @@ export async function submitComplaint(complaint, photoFile, audioBlob) {
     voiceUrl = 'base64:' + b64;
   }
 
-  const assignedStaff = await findBestStaffForCategory(rawCollege, complaint.category);
+  const category = complaint.category || 'General Maintenance';
+  const department = complaint.department || 'Estate Maintenance Department';
+  const assignedStaff = await findBestStaffForCategory(rawCollege, category);
   const finalStatus = assignedStaff ? 'Assigned' : 'Waiting for Staff Assignment';
   const ticketId = 'CMP' + String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 90) + 10);
 
@@ -97,8 +99,8 @@ export async function submitComplaint(complaint, photoFile, audioBlob) {
     title: complaint.title || '',
     details: complaint.details || '',
     location: complaint.location || '',
-    category: complaint.category || '',
-    department: complaint.department || '',
+    category,
+    department,
     priority: complaint.priority || 'Medium',
     status: finalStatus,
     studentEmail: isAnon ? 'anonymous@campus.edu' : email,

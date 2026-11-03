@@ -34,7 +34,8 @@ export function renderComplaintStatus(container) {
       <!-- Details card -->
       <div class="card" style="margin-bottom:16px;">
         <h3 style="font-size:15px;font-weight:700;color:#1565C0;margin-bottom:16px;">${c.title || 'Complaint'}</h3>
-        ${dRow('Category', c.category)}
+        ${dRow('Category', c.category || 'General Maintenance')}
+        ${dRow('Department', c.department || 'Estate Maintenance Department')}
         ${dRow('Location', c.location)}
         ${dRow('Priority', c.priority)}
         ${dRow('College', c.collegeName)}
@@ -75,9 +76,16 @@ export function renderComplaintStatus(container) {
 
   function dRow(label, value) {
     if (!value) return '';
-    return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F5F5F5;">
+    const isCategory = label === 'Category';
+    const isDept = label === 'Department';
+    const valDisplay = isCategory
+      ? `<span style="background:#E3F2FD;color:#1565C0;padding:4px 12px;border-radius:8px;font-weight:700;font-size:12px;">🏷️ ${value}</span>`
+      : isDept
+      ? `<span style="background:#EDE7F6;color:#512DA8;padding:4px 12px;border-radius:8px;font-weight:700;font-size:12px;">🏢 ${value}</span>`
+      : `<span style="font-size:13px;font-weight:600;color:#212121;max-width:60%;text-align:right;">${value}</span>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F5F5F5;">
       <span style="font-size:13px;color:#757575;">${label}</span>
-      <span style="font-size:13px;font-weight:600;color:#212121;max-width:60%;text-align:right;">${value}</span>
+      ${valDisplay}
     </div>`;
   }
 

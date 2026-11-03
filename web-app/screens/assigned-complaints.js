@@ -65,8 +65,8 @@ export function renderAssignedComplaints(container) {
           </div>
           <div class="ac-card-title">${c.title || 'Untitled'}</div>
           <div class="ac-meta-row"><span>📍</span>${c.location || 'Location not specified'}</div>
-          <div class="ac-meta-row"><span>🏷️</span>${c.category || ''}</div>
-          ${c.description ? `<div class="ac-description">${c.description}</div>` : ''}
+          <div class="ac-meta-row"><span style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:2px 8px;border-radius:6px;font-weight:700;font-size:12px;">🏷️ ${c.category || 'General Maintenance'}</span></div>
+          ${(c.details || c.description) ? `<div class="ac-description">${c.details || c.description}</div>` : ''}
           ${(c.photoUrl || c.imageUrl) ? `<button class="ac-view-photo-btn" onclick="event.stopPropagation();window.open('${c.photoUrl || c.imageUrl}','_blank')">📸 View Photo</button>` : ''}
         </div>`;
       }).join('')}

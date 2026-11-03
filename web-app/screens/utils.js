@@ -1,4 +1,6 @@
 // Shared utility functions
+import { detectAICategory } from './ai-voice-assistant.js';
+
 export function showToast(message, type = '') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -35,17 +37,8 @@ export function getComplaintBorderClass(status = '') {
 }
 
 export function suggestCategory(text) {
-  const input = text.toLowerCase();
-  if (/(wifi|internet|network)/.test(input)) return 'Network/WiFi';
-  if (/(fan|light|current|electrical)/.test(input)) return 'Electrical';
-  if (/(water|tap|leakage|plumbing)/.test(input)) return 'Plumbing';
-  if (/(dirty|dust|clean)/.test(input)) return 'Cleanliness';
-  if (/(furniture|chair|desk)/.test(input)) return 'Furniture';
-  if (/(hostel|room)/.test(input)) return 'Hostel';
-  if (/(security|safe|gate)/.test(input)) return 'Security';
-  if (/(transport|bus)/.test(input)) return 'Transport';
-  if (/(lab|experiment)/.test(input)) return 'Laboratory';
-  return 'General Maintenance';
+  if (!text || !text.trim()) return 'General Maintenance';
+  return detectAICategory(text).category;
 }
 
 export function fileToBase64(file) {

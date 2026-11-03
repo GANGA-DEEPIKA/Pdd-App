@@ -2,7 +2,7 @@
 import { AppState, navigateTo, goBack } from '../app.js';
 import { auth } from '../firebase-config.js';
 import { suggestCategory } from './utils.js';
-import { parseVoiceComplaint, createSpeechRecognizer } from './ai-voice-assistant.js';
+import { parseVoiceComplaint, createSpeechRecognizer, detectAICategory } from './ai-voice-assistant.js';
 
 export function renderNewComplaint(container) {
   let selectedPhotoFile = null;
@@ -53,10 +53,11 @@ export function renderNewComplaint(container) {
           <label class="form-label">Description</label>
           <textarea id="nc-details" class="form-textarea" placeholder="Describe the problem in detail…"></textarea>
         </div>
-        <!-- Auto category -->
-        <div id="nc-category-tag" class="category-tag" style="display:none;margin-bottom:8px;"></div>
-        <!-- Department tag -->
-        <div id="nc-dept-tag" class="category-tag" style="display:none;background:#EDE7F6;color:#512DA8;margin-bottom:16px;"></div>
+        <!-- AI Category & Department Display (Matches Android NewComplaintScreen) -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;margin-bottom:16px;">
+          <div id="nc-category-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">Category: General Maintenance</div>
+          <div id="nc-dept-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#EDE7F6;color:#512DA8;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;">Estate Maintenance Department</div>
+        </div>
         <div class="form-group">
           <label class="form-label">Location *</label>
           <input type="text" id="nc-location" class="form-input" placeholder="e.g. Block A, Room 101" />
@@ -178,34 +179,41 @@ export function renderNewComplaint(container) {
   const submitBtn = document.getElementById('nc-submit');
   const attachStatus = document.getElementById('attach-status');
 
-  // Auto-suggest category & update department
-  function updateCategory() {
+  // Auto-detect category & department using the shared AI engine (matching Android)
+  function updateCategory(overrideCategory, overrideDepartment) {
     const text = `${titleInput.value} ${detailsInput.value}`.trim();
-    if (text) {
-      const cat = AppState._ncCategory || suggestCategory(text);
-      catTag.textContent = `Category: ${cat}`;
-      catTag.style.display = 'inline-block';
-      AppState._ncCategory = cat;
-
-      if (AppState._ncDepartment) {
-        deptTag.textContent = `Department: ${AppState._ncDepartment}`;
-        deptTag.style.display = 'inline-block';
-      }
+    if (overrideCategory) {
+      AppState._ncCategory = overrideCategory;
+      AppState._ncDepartment = overrideDepartment || 'Estate Maintenance Department';
+    } else if (text) {
+      const aiResult = detectAICategory(text);
+      AppState._ncCategory = aiResult.category;
+      AppState._ncDepartment = aiResult.department;
     } else {
-      catTag.style.display = 'none';
-      deptTag.style.display = 'none';
       AppState._ncCategory = 'General Maintenance';
       AppState._ncDepartment = 'Estate Maintenance Department';
     }
+
+    const currentCat = AppState._ncCategory || 'General Maintenance';
+    const currentDept = AppState._ncDepartment || 'Estate Maintenance Department';
+
+    catTag.textContent = `Category: ${currentCat}`;
+    catTag.style.display = 'inline-flex';
+
+    if (currentDept) {
+      deptTag.textContent = currentDept;
+      deptTag.style.display = 'inline-flex';
+    } else {
+      deptTag.style.display = 'none';
+    }
+
     submitBtn.disabled = !(titleInput.value.trim() && locationInput.value.trim());
   }
 
   titleInput.addEventListener('input', () => {
-    AppState._ncCategory = null;
     updateCategory();
   });
   detailsInput.addEventListener('input', () => {
-    AppState._ncCategory = null;
     updateCategory();
   });
   locationInput.addEventListener('input', () => {
@@ -217,9 +225,9 @@ export function renderNewComplaint(container) {
     titleInput.value = AppState._voicePrefill.title || '';
     detailsInput.value = AppState._voicePrefill.description || '';
     locationInput.value = AppState._voicePrefill.location || '';
-    if (AppState._voicePrefill.category) AppState._ncCategory = AppState._voicePrefill.category;
-    if (AppState._voicePrefill.department) AppState._ncDepartment = AppState._voicePrefill.department;
+    updateCategory(AppState._voicePrefill.category, AppState._voicePrefill.department);
     AppState._voicePrefill = null;
+  } else {
     updateCategory();
   }
 
@@ -365,7 +373,7 @@ export function renderNewComplaint(container) {
       locationInput.value = currentExtractedData.location;
       AppState._ncCategory = currentExtractedData.category;
       AppState._ncDepartment = currentExtractedData.department;
-      updateCategory();
+      updateCategory(currentExtractedData.category, currentExtractedData.department);
       closeVoiceModal();
 
       // Highlight fields briefly
@@ -531,12 +539,17 @@ export function renderNewComplaint(container) {
   document.getElementById('nc-back').addEventListener('click', goBack);
 
   submitBtn.addEventListener('click', () => {
+    const text = `${titleInput.value} ${detailsInput.value}`.trim();
+    const detected = detectAICategory(text);
+    const category = AppState._ncCategory || detected.category || 'General Maintenance';
+    const department = AppState._ncDepartment || detected.department || 'Estate Maintenance Department';
+
     AppState.complaintData = {
       title: titleInput.value.trim(),
       details: detailsInput.value.trim(),
       location: locationInput.value.trim(),
-      category: AppState._ncCategory || 'General Maintenance',
-      department: AppState._ncDepartment || 'Estate Maintenance Department',
+      category: category,
+      department: department,
       priority: 'Medium',
       status: 'Pending',
       collegeName: AppState.currentUserData?.collegeName || AppState.collegeName,

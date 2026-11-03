@@ -28,7 +28,7 @@ export function renderAnonymousComplaint(container) {
           <label class="form-label">Description</label>
           <textarea id="an-details" class="form-textarea" placeholder="Describe the issue…"></textarea>
         </div>
-        <div id="an-cat-tag" class="category-tag" style="display:none;margin-bottom:12px;"></div>
+        <div id="an-cat-tag" class="category-tag" style="display:inline-flex;align-items:center;background:#E3F2FD;color:#1565C0;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;">Category: General Maintenance</div>
         <div class="form-group">
           <label class="form-label">Location *</label>
           <input type="text" id="an-location" class="form-input" placeholder="Where is the issue?" />
@@ -45,10 +45,9 @@ export function renderAnonymousComplaint(container) {
 
   function updateCat() {
     const text = `${titleInput.value} ${detailsInput.value}`.trim();
-    if (text) {
-      catTag.textContent = `Category: ${suggestCategory(text)}`;
-      catTag.style.display = 'inline-block';
-    } else catTag.style.display = 'none';
+    const cat = text ? suggestCategory(text) : 'General Maintenance';
+    catTag.textContent = `Category: ${cat}`;
+    catTag.style.display = 'inline-flex';
   }
   titleInput.addEventListener('input', updateCat);
   detailsInput.addEventListener('input', updateCat);

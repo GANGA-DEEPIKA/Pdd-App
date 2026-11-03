@@ -509,10 +509,15 @@ fun NewComplaintScreen(
                         )
                     )
                     
-                    // Update category only when text changes and not manually set
+                    // Update category & department automatically using shared AI logic
                     LaunchedEffect(title, details) {
-                        if (category.isEmpty() && (title.isNotEmpty() || details.isNotEmpty())) {
-                            category = suggestCategory("$title $details")
+                        if (title.isNotEmpty() || details.isNotEmpty()) {
+                            val parsed = AIVoiceAssistant.parseVoiceComplaint("$title $details")
+                            category = parsed.category
+                            department = parsed.department
+                        } else {
+                            category = "General Maintenance"
+                            department = "Estate Maintenance Department"
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -642,17 +647,5 @@ fun AttachmentBoxM3(icon: String, text: String, isSelected: Boolean, modifier: M
 }
 
 fun suggestCategory(text: String): String {
-    val input = text.lowercase()
-    return when {
-        "wifi" in input || "internet" in input || "network" in input -> "Network/WiFi"
-        "fan" in input || "light" in input || "current" in input || "electrical" in input -> "Electrical"
-        "water" in input || "tap" in input || "leakage" in input || "plumbing" in input -> "Plumbing"
-        "dirty" in input || "dust" in input || "clean" in input -> "Cleanliness"
-        "furniture" in input || "chair" in input || "desk" in input -> "Furniture"
-        "hostel" in input || "room" in input -> "Hostel"
-        "security" in input || "safe" in input || "gate" in input -> "Security"
-        "transport" in input || "bus" in input -> "Transport"
-        "lab" in input || "experiment" in input -> "Laboratory"
-        else -> "General Maintenance"
-    }
+    return AIVoiceAssistant.detectCategory(text)
 }

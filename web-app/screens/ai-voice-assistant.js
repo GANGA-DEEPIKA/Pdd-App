@@ -25,32 +25,32 @@ export function parseVoiceComplaint(speech) {
     {
       cat: 'Electrical',
       dept: 'Electrical Maintenance Department',
-      keywords: ['fan', 'fans', 'light', 'lights', 'bulb', 'bulbs', 'tube', 'tubelight', 'current', 'power', 'switch', 'socket', 'plug', 'wiring', 'wire', 'spark', 'ac', 'aircon', 'air conditioner', 'cooling', 'voltage', 'mcb', 'trip', 'street light', 'fuse']
+      keywords: ['fan', 'fans', 'light', 'lights', 'bulb', 'bulbs', 'tube', 'tubelight', 'current', 'power', 'switch', 'socket', 'plug', 'wiring', 'wire', 'spark', 'ac', 'aircon', 'air conditioner', 'cooling', 'voltage', 'mcb', 'trip', 'street light', 'fuse', 'geyser', 'heater', 'electrical']
     },
     {
       cat: 'Plumbing',
       dept: 'Plumbing & Water Supply Department',
-      keywords: ['water', 'tap', 'taps', 'faucet', 'leak', 'leaking', 'leakage', 'pipe', 'pipeline', 'dripping', 'flush', 'drain', 'drainage', 'sink', 'washbasin', 'sewage', 'restroom', 'washroom', 'toilet', 'tank', 'motor', 'drinking water', 'purifier']
+      keywords: ['water', 'tap', 'taps', 'faucet', 'leak', 'leaking', 'leakage', 'pipe', 'pipeline', 'dripping', 'flush', 'drain', 'drainage', 'sink', 'washbasin', 'sewage', 'restroom', 'washroom', 'toilet', 'tank', 'motor', 'drinking water', 'purifier', 'cooler', 'plumbing']
     },
     {
       cat: 'Network/WiFi',
       dept: 'IT & Campus Network Services',
-      keywords: ['wifi', 'wi-fi', 'internet', 'network', 'lan', 'ethernet', 'router', 'connection', 'signal', 'hotspot', 'disconnect', 'disconnecting', 'slow internet', 'bandwidth', 'portal']
+      keywords: ['wifi', 'wi-fi', 'internet', 'network', 'lan', 'ethernet', 'router', 'connection', 'signal', 'hotspot', 'disconnect', 'disconnecting', 'slow internet', 'bandwidth', 'portal', 'wifi slow']
     },
     {
       cat: 'Cleanliness',
       dept: 'Housekeeping & Campus Sanitation',
-      keywords: ['dirty', 'dust', 'dustbin', 'trash', 'garbage', 'waste', 'cleaning', 'sweep', 'sweeping', 'broom', 'smell', 'stink', 'stinking', 'spill', 'stain', 'sanitation', 'unhygienic', 'litter', 'overflowing']
+      keywords: ['dirty', 'dust', 'dustbin', 'trash', 'garbage', 'waste', 'cleaning', 'sweep', 'sweeping', 'broom', 'smell', 'stink', 'stinking', 'spill', 'stain', 'sanitation', 'unhygienic', 'litter', 'overflowing', 'corridor dirty', 'clean']
     },
     {
       cat: 'Furniture',
       dept: 'Carpentry & Infrastructure Maintenance',
-      keywords: ['bench', 'benches', 'chair', 'chairs', 'desk', 'desks', 'table', 'tables', 'furniture', 'board', 'blackboard', 'whiteboard', 'podium', 'shelf', 'cupboard', 'almirah', 'wooden', 'cot']
+      keywords: ['bench', 'benches', 'chair', 'chairs', 'desk', 'desks', 'table', 'tables', 'furniture', 'board', 'blackboard', 'whiteboard', 'podium', 'shelf', 'cupboard', 'almirah', 'wooden', 'cot', 'broken leg']
     },
     {
       cat: 'Laboratory',
       dept: 'Academic Laboratories & AV Support',
-      keywords: ['lab', 'laboratory', 'projector', 'screen', 'hdmi', 'vga', 'display', 'experiment', 'system', 'computer', 'pc', 'monitor', 'cpu', 'mouse', 'keyboard', 'apparatus', 'instrument', 'microscope']
+      keywords: ['lab', 'laboratory', 'projector', 'screen', 'hdmi', 'vga', 'display', 'experiment', 'system', 'computer', 'pc', 'monitor', 'cpu', 'mouse', 'keyboard', 'apparatus', 'instrument', 'microscope', 'chemicals']
     },
     {
       cat: 'Hostel',
@@ -60,7 +60,7 @@ export function parseVoiceComplaint(speech) {
     {
       cat: 'Security',
       dept: 'Campus Security & Safety Division',
-      keywords: ['security', 'gate', 'guard', 'theft', 'lost', 'stolen', 'cctv', 'camera', 'id card', 'trespass', 'safety', 'lock', 'padlock', 'key']
+      keywords: ['security', 'gate', 'guard', 'theft', 'lost', 'stolen', 'cctv', 'camera', 'id card', 'trespass', 'safety', 'lock', 'padlock', 'key', 'stranger', 'safe']
     },
     {
       cat: 'Transport',
@@ -159,6 +159,27 @@ export function capitalizeWords(str) {
 }
 
 /**
+ * AI Category Detection Engine - Extracts complaint category and department
+ * Matches the Android AIVoiceAssistant NLP engine.
+ */
+export function detectAICategory(text) {
+  const parsed = parseVoiceComplaint(text);
+  return {
+    category: parsed.category,
+    department: parsed.department,
+    confidence: parsed.confidence
+  };
+}
+
+export function detectCategory(text) {
+  return parseVoiceComplaint(text).category;
+}
+
+export function detectDepartment(text) {
+  return parseVoiceComplaint(text).department;
+}
+
+/**
  * Creates and returns a cross-browser Web Speech Recognition instance
  */
 export function createSpeechRecognizer({ onResult, onError, onStart, onEnd }) {
@@ -191,3 +212,4 @@ export function createSpeechRecognizer({ onResult, onError, onStart, onEnd }) {
 
   return recognizer;
 }
+
